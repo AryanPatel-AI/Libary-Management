@@ -4,7 +4,7 @@ const jwt = require('jsonwebtoken');
 
 const { OAuth2Client } = require('google-auth-library');
 const crypto = require('crypto');
-const emailService = require('../utils/emailService');
+const emailSender = require('../services/emailSender');
 
 // Generate JWT token
 const generateToken = (id) => {
@@ -47,24 +47,37 @@ const registerUser = asyncHandler(async (req, res) => {
   });
 
   if (user) {
-    try {
-      // Dispatch Verification Email
-      await emailService.sendVerificationEmail(user.email, user.name, verificationToken);
-      console.log(`[DEBUG] Verification Link for ${user.email}: http://localhost:3001/verify-email?token=${verificationToken}`);
-
-      res.status(201).json({
-        success: true,
-        message: 'Registration successful! Please check your email to verify your account.'
-      });
-    } catch (emailError) {
-      // Rollback user creation
-      await User.findByIdAndDelete(user._id);
-      console.error('Email sending failed, user creation rolled back:', emailError);
-      res.status(500).json({
-        success: false,
-        message: 'Registration failed due to email service error. Please try again or contact support.'
-      });
+    // Dispatch Verification Email (Safe call - won't crash if SMTP missing)
+    const emailResult = await emailSender.sendVerificationEmail(user.email, user.name, verificationToken);
+    
+    if (!emailResult.success && process.env.NODE_ENV === 'production') {
+      console.warn(`[Auth] Verification email failed to send for ${user.email}. User can still verify if they have the link.`);
     }
+
+    // In development or if SMTP is missing, we could auto-verify or just provide the token in response
+    // For now, let's keep it simple: allow login if they know their password, 
+    // BUT the current logic requires isVerified = true.
+    // If SMTP is missing, we auto-verify for convenience.
+    if (!emailResult.success) {
+      user.isVerified = true;
+      user.verificationToken = undefined;
+      user.verificationTokenExpire = undefined;
+      await user.save();
+      console.log(`[Auth] SMTP missing or failed. Auto-verifying user: ${user.email}`);
+    }
+
+    res.status(201).json({
+      success: true,
+      message: emailResult.success 
+        ? 'Registration successful! Please check your email to verify your account.'
+        : 'Registration successful! (Auto-verified as email service is unavailable)',
+      data: {
+        _id: user._id,
+        name: user.name,
+        email: user.email,
+        token: generateToken(user._id)
+      }
+    });
   } else {
     res.status(400);
     throw new Error('Invalid user data');

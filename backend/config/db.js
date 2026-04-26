@@ -3,12 +3,19 @@ const mongoose = require('mongoose');
 let listenersRegistered = false;
 
 const connectDB = async () => {
+  if (!process.env.MONGO_URI) {
+    console.error('\n' + '!'.repeat(60));
+    console.error('❌ CRITICAL ERROR: MONGO_URI is not defined.');
+    console.error('Please add your MongoDB connection string to your environment variables.');
+    console.error('On Hugging Face: Go to Settings > Secrets and add MONGO_URI.');
+    console.error('!'.repeat(60) + '\n');
+    process.exit(1);
+  }
+
   try {
     const conn = await mongoose.connect(process.env.MONGO_URI);
-
     console.log(`✅ MongoDB Connected: ${conn.connection.host}`);
 
-    // Register event listeners only once
     if (!listenersRegistered) {
       mongoose.connection.on('error', (err) => {
         console.error(`❌ MongoDB connection error: ${err.message}`);
@@ -18,7 +25,6 @@ const connectDB = async () => {
         console.warn('⚠️  MongoDB disconnected');
       });
 
-      // Graceful shutdown
       process.on('SIGINT', async () => {
         try {
           await mongoose.connection.close();
