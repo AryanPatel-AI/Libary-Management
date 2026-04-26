@@ -41,7 +41,11 @@ const seedAdmin = require('./utils/seedAdmin');
 const app = express();
 
 // ─── Security Middleware ────────────────────────────────────────────
-app.use(helmet());
+app.use(helmet({
+  crossOriginEmbedderPolicy: false,
+  contentSecurityPolicy: false, // Optional: if CSP also blocks embedding
+  frameguard: false, // This allows the app to be embedded in iframes (required for HF Spaces)
+}));
 
 // Rate limiting: 100 requests per 15 minutes per IP
 const limiter = rateLimit({
