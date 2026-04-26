@@ -64,9 +64,7 @@ app.use(cors({
   credentials: true
 }));
 
-if (process.env.NODE_ENV === 'development') {
-  app.use(morgan('dev'));
-}
+app.use(morgan(process.env.NODE_ENV === 'production' ? 'common' : 'dev'));
 
 // ─── Connect to MongoDB & Seed Admin ────────────────────────────────
 (async () => {
