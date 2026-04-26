@@ -46,6 +46,7 @@ app.use(helmet({
   crossOriginOpenerPolicy: false, // Required for Google OAuth popup to communicate with the parent window
   crossOriginResourcePolicy: { policy: "cross-origin" },
   contentSecurityPolicy: false, // Allow external scripts/images (like Google's)
+  referrerPolicy: { policy: "no-referrer-when-downgrade" },
   frameguard: false, // Allow embedding in HF Spaces iframe
 }));
 
