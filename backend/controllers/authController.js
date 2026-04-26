@@ -301,6 +301,7 @@ const googleLogin = asyncHandler(async (req, res) => {
       }
     });
   } catch (error) {
+    console.error('❌ Google Token Verification Error:', error.message);
     res.status(401);
     throw new Error('Invalid Google token');
   }

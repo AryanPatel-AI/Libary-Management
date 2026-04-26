@@ -39,6 +39,7 @@ const { notFound, errorHandler } = require('./middleware/errorMiddleware');
 const seedAdmin = require('./utils/seedAdmin');
 
 const app = express();
+app.set('trust proxy', 1); // Trust Hugging Face proxy for rate-limiting and security headers
 
 // ─── Security Middleware ────────────────────────────────────────────
 app.use(helmet({
