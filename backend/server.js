@@ -43,8 +43,10 @@ const app = express();
 // ─── Security Middleware ────────────────────────────────────────────
 app.use(helmet({
   crossOriginEmbedderPolicy: false,
-  contentSecurityPolicy: false, // Optional: if CSP also blocks embedding
-  frameguard: false, // This allows the app to be embedded in iframes (required for HF Spaces)
+  crossOriginOpenerPolicy: false, // Required for Google OAuth popup to communicate with the parent window
+  crossOriginResourcePolicy: { policy: "cross-origin" },
+  contentSecurityPolicy: false, // Allow external scripts/images (like Google's)
+  frameguard: false, // Allow embedding in HF Spaces iframe
 }));
 
 // Rate limiting: 100 requests per 15 minutes per IP
