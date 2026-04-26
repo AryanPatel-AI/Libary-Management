@@ -1,0 +1,13 @@
+{
+  "name": "library-management-system",
+  "version": "1.0.0",
+  "description": "Enterprise Library Management System",
+  "scripts": {
+    "frontend-install": "npm install --prefix frontend",
+    "backend-install": "npm install --prefix backend",
+    "install-all": "npm run frontend-install && npm run backend-install",
+    "frontend-build": "npm run build --prefix frontend",
+    "start": "NODE_ENV=production node backend/server.js",
+    "build": "npm run install-all && npm run frontend-build"
+  }
+}
