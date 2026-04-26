@@ -9,20 +9,23 @@ const createTransporter = () => {
   const missingVars = requiredEnvVars.filter(varName => !process.env[varName]);
 
   if (missingVars.length > 0) {
-    console.error(`Missing required SMTP environment variables: ${missingVars.join(', ')}`);
-    if (process.env.NODE_ENV === 'production') {
-      throw new Error('SMTP configuration is required in production');
-    }
+    console.warn(`[SMTP] Missing environment variables: ${missingVars.join(', ')}. Email features will be disabled.`);
+    return null;
   }
 
-  return nodemailer.createTransport({
-    host: process.env.SMTP_HOST,
-    port: process.env.SMTP_PORT,
-    auth: {
-      user: process.env.SMTP_USER,
-      pass: process.env.SMTP_PASS
-    }
-  });
+  try {
+    return nodemailer.createTransport({
+      host: process.env.SMTP_HOST,
+      port: process.env.SMTP_PORT,
+      auth: {
+        user: process.env.SMTP_USER,
+        pass: process.env.SMTP_PASS
+      }
+    });
+  } catch (error) {
+    console.error('[SMTP] Failed to create transporter:', error);
+    return null;
+  }
 };
 
 const transporter = createTransporter();
@@ -51,18 +54,18 @@ const sendOverdueEmails = async () => {
                  <p>Thank you,<br/>Patel & Co. Knowledge Center</p>`
         };
 
-        // In production, we'd actually send this. Here we'll simulate.
-        if (process.env.NODE_ENV === 'production') {
-          await transporter.sendMail(mailOptions);
-          const maskEmail = (email) => {
-            const [local, domain] = email.split('@');
-            return `${local.slice(0, 2)}***@${domain}`;
-          };
-
-          // ... existing code ...
-
+        // Only attempt to send if transporter exists and is in production
+        if (process.env.NODE_ENV === 'production' && transporter) {
+          try {
+            await transporter.sendMail(mailOptions);
+            console.log(`[Cron] Sent overdue notice to ${transaction.user.email}`);
+          } catch (mailError) {
+            console.error(`[Cron] Failed to send email to ${transaction.user.email}:`, mailError);
+          }
+        } else if (process.env.NODE_ENV === 'production') {
+          console.warn(`[Cron] Skipping email to ${transaction.user.email} (Transporter not configured)`);
         } else {
-          console.log(`[Cron Mock Email] Sent overdue notice to ${maskEmail(transaction.user.email)} for "${transaction.book.title}"`);
+          console.log(`[Cron Mock Email] Would send overdue notice to ${transaction.user.email} for "${transaction.book.title}"`);
         }
       }
     }
@@ -81,9 +84,10 @@ const initCronJobs = () => {
       console.error('[Cron] Failed to send overdue emails:', error);
     }
   }, {
-    timezone: 'UTC' // or 'America/New_York' etc.
+    timezone: 'UTC'
   });
   console.log('Cron jobs initialized successfully.');
 };
 
 module.exports = initCronJobs;
+
