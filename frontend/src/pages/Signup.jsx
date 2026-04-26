@@ -149,7 +149,6 @@ const Signup = () => {
             <GoogleLogin
               onSuccess={handleGoogleSuccess}
               onError={handleGoogleError}
-              useOneTap
               theme="filled_blue"
               shape="pill"
             />
