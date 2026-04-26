@@ -114,6 +114,7 @@ app.post('/api/test-email', async (req, res) => {
 if (process.env.NODE_ENV === 'production') {
   const frontendPath = path.join(__dirname, '../frontend/dist');
   app.use(express.static(frontendPath));
+console.log('✅ Serving static frontend from', frontendPath);
 
   app.get('*', (req, res, next) => {
     // If it's an API route, let it fall through to error handlers
