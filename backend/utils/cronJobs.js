@@ -54,12 +54,12 @@ const sendOverdueEmails = async () => {
         // In production, we'd actually send this. Here we'll simulate.
         if (process.env.NODE_ENV === 'production') {
           await transporter.sendMail(mailOptions);
-const maskEmail = (email) => {
-  const [local, domain] = email.split('@');
-  return `${local.slice(0, 2)}***@${domain}`;
-};
+          const maskEmail = (email) => {
+            const [local, domain] = email.split('@');
+            return `${local.slice(0, 2)}***@${domain}`;
+          };
 
-// ... existing code ...
+          // ... existing code ...
 
         } else {
           console.log(`[Cron Mock Email] Sent overdue notice to ${maskEmail(transaction.user.email)} for "${transaction.book.title}"`);
