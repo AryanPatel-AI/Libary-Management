@@ -1,6 +1,6 @@
 const cron = require('node-cron');
 const Transaction = require('../models/Transaction');
-const { sendEmail } = require('../utils/emailService');
+const emailSender = require('../services/emailSender');
 
 /**
  * Daily job to check for overdue books and send reminders
@@ -31,18 +31,14 @@ const startOverdueReminders = () => {
             continue;
           }
 
-          // Send Email Reminder
-          await sendEmail({
-            to: user.email,
-            subject: `⚠️ Overdue Notice: ${book.title}`,
-            html: `
-              <h2>Hi ${user.name},</h2>
-              <p>This is a friendly reminder that the book <strong>"${book.title}"</strong> was due on <strong>${new Date(dueDate).toLocaleDateString()}</strong>.</p>
-              <p>Please return it to the library as soon as possible to avoid further fines.</p>
-              <p>Current Fine: ₹${transaction.fine || 0}</p>
-              <p>Thank you!</p>
-            `
-          });
+          // Send Email Reminder using the template service
+          await emailSender.sendOverdueNotice(
+            user.email,
+            user.name,
+            book.title,
+            dueDate,
+            transaction.fine || 0
+          );
 
           // Update transaction status to 'overdue' if not already
           if (transaction.status !== 'overdue') {
@@ -51,7 +47,6 @@ const startOverdueReminders = () => {
           }
         } catch (error) {
           console.error(`[Cron Error] Failed to process overdue transaction ${transaction._id}:`, error);
-          // Continue to next transaction
         }
       }
     } catch (error) {
@@ -61,3 +56,4 @@ const startOverdueReminders = () => {
 };
 
 module.exports = startOverdueReminders;
+

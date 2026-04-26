@@ -30,6 +30,7 @@ const reservationRoutes = require('./routes/reservationRoutes');
 const watchlistRoutes = require('./routes/watchlistRoutes');
 const fineRoutes = require('./routes/fineRoutes');
 const analyticsRoutes = require('./routes/analyticsRoutes');
+const emailSender = require('./services/emailSender');
 
 // Middleware imports
 const { notFound, errorHandler } = require('./middleware/errorMiddleware');
@@ -90,6 +91,24 @@ app.use('/api/reservations', reservationRoutes);
 app.use('/api/watchlist', watchlistRoutes);
 app.use('/api/fines', fineRoutes);
 app.use('/api/analytics', analyticsRoutes);
+
+// ─── Test Email Route ───────────────────────────────────────────────
+app.post('/api/test-email', async (req, res) => {
+  const { email } = req.body;
+  if (!email) return res.status(400).json({ success: false, message: 'Email is required' });
+
+  const result = await emailSender.send({
+    to: email,
+    subject: '🧪 Library System: Test Email',
+    html: `<h3>Test Successful!</h3><p>Your SMTP configuration is working correctly.</p>`
+  });
+
+  if (result.success) {
+    res.json({ success: true, message: 'Test email sent successfully' });
+  } else {
+    res.status(500).json({ success: false, message: result.error });
+  }
+});
 
 // ─── Production Configuration ──────────────────────────────────────
 if (process.env.NODE_ENV === 'production') {
