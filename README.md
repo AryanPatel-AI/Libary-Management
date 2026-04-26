@@ -1,7 +1,8 @@
+---
 title: Patel-And-Co-Knowledge-Center
 sdk: docker
 emoji: 📚
-
+---
 # Patel & Co. Knowledge Center
 
 **Welcome to Patel & Co. Knowledge Center – your trusted destination for managing, accessing, and exploring knowledge with ease.**
