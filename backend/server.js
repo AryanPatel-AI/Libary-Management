@@ -1,24 +1,20 @@
+const dotenv = require('dotenv');
+dotenv.config();
+
 const express = require('express');
 const path = require('path');
 const mongoose = require('mongoose');
 const cors = require('cors');
-const dotenv = require('dotenv');
 const morgan = require('morgan');
 const helmet = require('helmet');
 const rateLimit = require('express-rate-limit');
-const initCronJobs = require('./utils/cronJobs');
-
-// Load environment variables
-dotenv.config();
 
 // Database configuration
 const connectDB = require('./config/db');
 const startOverdueReminders = require('./jobs/reminder');
 const startReservationExpiryCheck = require('./jobs/reservationExpiryJob');
 
-// Start Cron Jobs
-// startOverdueReminders(); 
-// startReservationExpiryCheck(); 
+
 
 
 // Route imports
@@ -81,7 +77,6 @@ app.use(morgan(process.env.NODE_ENV === 'production' ? 'common' : 'dev'));
     await seedAdmin();
     startOverdueReminders();
     startReservationExpiryCheck();
-    initCronJobs();
   } catch (error) {
     console.error('Failed to initialize application:', error);
     process.exit(1);

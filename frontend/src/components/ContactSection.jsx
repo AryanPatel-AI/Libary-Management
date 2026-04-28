@@ -26,7 +26,7 @@ const ContactSection = () => {
     <section id="contact" className="py-32 relative overflow-hidden">
       <div className="container mx-auto px-6 relative z-10">
         <div className="grid lg:grid-cols-2 gap-20 items-center">
-          
+
           <motion.div
             initial={{ opacity: 0, x: -30 }}
             whileInView={{ opacity: 1, x: 0 }}
@@ -41,9 +41,9 @@ const ContactSection = () => {
 
             <div className="space-y-8">
               {[
-                { icon: <Phone className="w-6 h-6 text-indigo-500" />, title: "Call Us", detail: "+91 (800) 123-4567" },
-                { icon: <Mail className="w-6 h-6 text-indigo-500" />, title: "Email Support", detail: "contact@patelandco.com" },
-                { icon: <MapPin className="w-6 h-6 text-indigo-500" />, title: "Visit HQ", detail: "Patel Towers, Mumbai, India" }
+                { icon: <Phone className="w-6 h-6 text-indigo-500" />, title: "Call Us", detail: "+91 (coming soon)" },
+                { icon: <Mail className="w-6 h-6 text-indigo-500" />, title: "Email Support", detail: "patelandco.@gmail.com" },
+                { icon: <MapPin className="w-6 h-6 text-indigo-500" />, title: "Visit HQ", detail: "Bareilly, Uttar Pradesh, India" }
               ].map((item, i) => (
                 <div key={i} className="flex gap-4 items-start">
                   <div className="p-4 rounded-2xl bg-white/5 border border-white/10 backdrop-blur-md">
@@ -67,38 +67,38 @@ const ContactSection = () => {
             <form onSubmit={handleSubmit} className="space-y-6">
               <div className="space-y-2">
                 <label className="text-sm font-bold text-slate-400">Your Full Name</label>
-                <input 
+                <input
                   required
-                  type="text" 
+                  type="text"
                   value={formData.name}
-                  onChange={(e) => setFormData({...formData, name: e.target.value})}
+                  onChange={(e) => setFormData({ ...formData, name: e.target.value })}
                   placeholder="John Doe"
                   className="w-full px-6 py-4 bg-white/5 border border-white/10 rounded-2xl outline-none focus:border-indigo-500 transition-colors text-white placeholder:text-slate-600"
                 />
               </div>
               <div className="space-y-2">
                 <label className="text-sm font-bold text-slate-400">Email Address</label>
-                <input 
+                <input
                   required
-                  type="email" 
+                  type="email"
                   value={formData.email}
-                  onChange={(e) => setFormData({...formData, email: e.target.value})}
+                  onChange={(e) => setFormData({ ...formData, email: e.target.value })}
                   placeholder="john@example.com"
                   className="w-full px-6 py-4 bg-white/5 border border-white/10 rounded-2xl outline-none focus:border-indigo-500 transition-colors text-white placeholder:text-slate-600"
                 />
               </div>
               <div className="space-y-2">
                 <label className="text-sm font-bold text-slate-400">Message</label>
-                <textarea 
+                <textarea
                   required
                   rows="4"
                   value={formData.message}
-                  onChange={(e) => setFormData({...formData, message: e.target.value})}
+                  onChange={(e) => setFormData({ ...formData, message: e.target.value })}
                   placeholder="How can we help you?"
                   className="w-full px-6 py-4 bg-white/5 border border-white/10 rounded-2xl outline-none focus:border-indigo-500 transition-colors text-white placeholder:text-slate-600 resize-none"
                 ></textarea>
               </div>
-              <button 
+              <button
                 type="submit"
                 disabled={loading}
                 className="w-full py-5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-2xl font-black text-xl transition-all shadow-xl shadow-indigo-500/20 flex items-center justify-center gap-3 active:scale-95"

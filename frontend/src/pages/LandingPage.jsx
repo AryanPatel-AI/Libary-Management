@@ -140,13 +140,10 @@ const LandingPage = ({ onOpenLogin }) => {
 
       <footer className="py-12 border-t border-white/5 text-center text-slate-500 text-sm flex flex-col gap-2 bg-[#030712]">
         <div className="container mx-auto px-6">
-          <p className="text-base font-bold text-slate-400 mb-4">
-            Patel & Co. Knowledge Center
-          </p>
-          <p className="text-sm font-medium mb-4">
+          <p className="text-white font-medium mb-4">
             Made with <span className="text-red-500 animate-pulse inline-block">❤️</span> by <span className="font-extrabold text-white">Aryan Patel</span>
           </p>
-          <p className="text-xs opacity-50">
+          <p className="text-white opacity-50">
             © 2026 Patel & Co. Limited – Industrial Grade Knowledge Management
           </p>
         </div>
