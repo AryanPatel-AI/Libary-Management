@@ -4,7 +4,8 @@ import { X, Mail, Lock, User, Loader2, ArrowRight, ShieldCheck } from 'lucide-re
 import { AuthContext } from '../contexts/AuthContext';
 import { useNavigate } from 'react-router-dom';
 import { toast } from 'react-toastify';
-import { GoogleLogin } from '@react-oauth/google';
+import { useGoogleLogin } from '@react-oauth/google';
+import axios from 'axios';
 
 const LoginModal = ({ isOpen, onClose }) => {
   const [isLogin, setIsLogin] = useState(true);
@@ -13,24 +14,30 @@ const LoginModal = ({ isOpen, onClose }) => {
   const { login, register, googleLogin } = useContext(AuthContext);
   const navigate = useNavigate();
 
-  const handleGoogleSuccess = async (credentialResponse) => {
+  const handleGoogleSuccess = async (tokenResponse) => {
     setLoading(true);
     try {
-      await googleLogin(credentialResponse.credential);
-      toast.success('Successfully signed in with Google!');
+      // In redirect mode or with useGoogleLogin, we might get a code or a token
+      const credential = tokenResponse.credential || tokenResponse.access_token;
+      if (!credential) throw new Error('No credential received from Google');
+
+      await googleLogin(credential);
+      toast.success('Access Granted via Google');
       onClose();
       navigate('/main');
-      window.location.reload();
     } catch (err) {
-      toast.error(err.message || 'Google Login failed');
+      console.error('Google Auth Error:', err);
+      toast.error('Google Login failed. Please use email login.');
     } finally {
       setLoading(false);
     }
   };
 
-  const handleGoogleError = () => {
-    toast.error('Google Login failed');
-  };
+  const googleLoginHandler = useGoogleLogin({
+    onSuccess: handleGoogleSuccess,
+    onError: () => toast.error('Google Login failed'),
+    flow: 'implicit' // Simpler for SPAs
+  });
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -97,16 +104,15 @@ const LoginModal = ({ isOpen, onClose }) => {
 
           {/* Form Body */}
           <div className="p-8 space-y-6">
-            {/* Social Logins */}
-            <div className="flex justify-center">
-              <GoogleLogin
-                onSuccess={handleGoogleSuccess}
-                onError={handleGoogleError}
-                theme="filled_blue"
-                shape="pill"
-                width="100%"
-              />
-            </div>
+            {/* Custom Google Button for better Iframe handling */}
+            <button
+              onClick={() => googleLoginHandler()}
+              disabled={loading}
+              className="w-full py-4 bg-white text-slate-900 rounded-2xl font-bold flex items-center justify-center gap-3 border border-slate-200 hover:bg-slate-50 transition-all shadow-sm active:scale-95 disabled:opacity-50"
+            >
+              <img src="https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg" className="w-5 h-5" alt="Google" />
+              <span>Continue with Google</span>
+            </button>
 
             <div className="relative">
               <div className="absolute inset-0 flex items-center"><div className="w-full border-t border-white/10"></div></div>
