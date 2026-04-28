@@ -4,6 +4,7 @@ import { ToastContainer } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
 
 import { AuthProvider } from './contexts/AuthContext';
+import { GOOGLE_CLIENT_ID } from './api/config';
 import Header from './components/Header';
 import Home from './pages/Home';
 import BookDetails from './pages/BookDetails';
@@ -53,7 +54,7 @@ function App() {
   };
 
   return (
-    <GoogleOAuthProvider clientId="475792246807-vdvmuphc9ntb58e0rsjfs2uu519bfvlk.apps.googleusercontent.com">
+    <GoogleOAuthProvider clientId={GOOGLE_CLIENT_ID}>
       <AuthProvider>
         <Router>
           <AppContent darkMode={darkMode} toggleDarkMode={toggleDarkMode} />
