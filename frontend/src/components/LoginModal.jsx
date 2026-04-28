@@ -15,6 +15,7 @@ const LoginModal = ({ isOpen, onClose }) => {
   const navigate = useNavigate();
 
   const handleGoogleSuccess = async (tokenResponse) => {
+    if (!tokenResponse) return;
     setLoading(true);
     try {
       // In redirect mode or with useGoogleLogin, we might get a code or a token
