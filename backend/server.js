@@ -94,7 +94,9 @@ app.use('/api/books', bookRoutes);
 app.use('/api/transactions', transactionRoutes);
 app.use('/api/users', userRoutes);
 app.use('/api/reservations', reservationRoutes);
-app.use('/api/watchlist', watchlistRoutes);
+app.use('/api/reviews', require('./routes/reviewRoutes'));
+app.use('/api/watchlist', require('./routes/watchlistRoutes'));
+app.use('/api/ai', require('./routes/aiRoutes'));
 app.use('/api/fines', fineRoutes);
 app.use('/api/analytics', analyticsRoutes);
 

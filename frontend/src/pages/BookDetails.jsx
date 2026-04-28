@@ -6,6 +6,8 @@ import { motion } from 'framer-motion';
 import { ArrowLeft, BookOpen, Loader2, Calendar, User, Tag, Info, CheckCircle2, XCircle, Bookmark } from 'lucide-react';
 import { toast } from 'react-toastify';
 import { AuthContext } from '../contexts/AuthContext';
+import PdfViewer from '../components/PdfViewer';
+import ReviewsSection from '../components/ReviewsSection';
 
 const BookDetails = () => {
   const { id } = useParams();
@@ -14,6 +16,7 @@ const BookDetails = () => {
   const [loading, setLoading] = useState(true);
   const [issueLoading, setIssueLoading] = useState(false);
   const [buyLoading, setBuyLoading] = useState(false);
+  const [isPdfOpen, setIsPdfOpen] = useState(false);
   const { user, setUser } = useContext(AuthContext);
 
   const currentUser = user?.data || user;
@@ -254,9 +257,9 @@ const BookDetails = () => {
                 hasPurchased ? (
                   <button
                     className="flex-1 py-4 rounded-xl font-bold text-lg transition-all flex justify-center items-center gap-2 shadow-md bg-green-500 text-white hover:bg-green-600 hover:shadow-lg"
-                    onClick={() => toast.success(`Accessing PDF / Content for ${book.title}`)}
+                    onClick={() => book.pdfUrl ? setIsPdfOpen(true) : toast.info('Digital copy not available yet')}
                   >
-                    Read Content
+                    Read Digital Edition
                   </button>
                 ) : (
                   <button
@@ -270,16 +273,22 @@ const BookDetails = () => {
                 )
               ) : (
                 <button
-                  onClick={handleIssueBook}
-                  disabled={!isAvailable || issueLoading}
+                  onClick={() => {
+                    if (book.pdfUrl) {
+                      setIsPdfOpen(true);
+                    } else {
+                      handleIssueBook();
+                    }
+                  }}
+                  disabled={(!isAvailable && !book.pdfUrl) || issueLoading}
                   className={`flex-1 py-4 rounded-xl font-bold text-lg transition-all flex justify-center items-center gap-2 shadow-md
-                    ${isAvailable && !issueLoading
+                    ${(isAvailable || book.pdfUrl) && !issueLoading
                       ? 'bg-primary text-white hover:bg-primary-hover hover:shadow-lg' 
                       : 'bg-slate-100 text-slate-400 cursor-not-allowed dark:bg-slate-700 dark:text-slate-500 shadow-none'
                     }`}
                 >
                   {issueLoading && <Loader2 className="w-5 h-5 animate-spin" />}
-                  {issueLoading ? 'Processing...' : (isAvailable ? 'Read Free' : 'Currently Unavailable')}
+                  {issueLoading ? 'Processing...' : (book.pdfUrl ? 'Read Digital' : (isAvailable ? 'Issue Free' : 'Currently Unavailable'))}
                 </button>
               )}
             </div>
@@ -294,7 +303,20 @@ const BookDetails = () => {
           </div>
         </div>
       </div>
+
+      {/* Reviews Section */}
+      <ReviewsSection bookId={book._id} currentUser={currentUser} />
+
+      {/* PDF Viewer Modal */}
+      {isPdfOpen && (
+        <PdfViewer 
+          url={book.pdfUrl} 
+          title={book.title} 
+          onClose={() => setIsPdfOpen(false)} 
+        />
+      )}
     </motion.div>
+
   );
 };
 

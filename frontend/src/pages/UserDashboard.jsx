@@ -4,6 +4,7 @@ import axios from 'axios';
 import { motion } from 'framer-motion';
 import { BookOpen, Clock, CheckCircle, Star, Package, AlertCircle } from 'lucide-react';
 import { toast } from 'react-toastify';
+import AIRecommendations from '../components/AIRecommendations';
 
 const UserDashboard = () => {
   const [loading, setLoading] = useState(true);
@@ -219,6 +220,9 @@ const UserDashboard = () => {
         {/* Right Column (Narrower) */}
         <div className="space-y-8">
           
+          {/* 🤖 AI Recommendations */}
+          <AIRecommendations />
+
           {/* ⏰ Due Reminders */}
           <section className="bg-gradient-to-br from-amber-50 to-orange-50 dark:from-slate-800 dark:to-slate-800 rounded-2xl p-6 shadow-sm border border-amber-100 dark:border-amber-900/50">
             <div className="flex items-center gap-2 mb-6">

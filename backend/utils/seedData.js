@@ -67,12 +67,68 @@ const seedData = async () => {
       { title: 'The Odyssey', author: 'Homer', category: 'Epic', isbn: '9780140268867', totalCopies: 6, availableCopies: 6, image: 'https://covers.openlibrary.org/b/isbn/9780140268867-L.jpg' },
       
       // Indian Educational Books
-      { title: 'NCERT Mathematics Class 10', author: 'NCERT', category: 'Textbook', isbn: '9788174506345', totalCopies: 20, availableCopies: 18, image: 'https://images.unsplash.com/photo-1633613286991-611fe299c4be?auto=format&fit=crop&q=80&w=600' },
-      { title: 'Concepts of Physics (Vol 1 & 2)', author: 'H.C. Verma', category: 'Physics', isbn: '9788177091878', totalCopies: 15, availableCopies: 10, image: 'https://images.unsplash.com/photo-1636466497217-26c8c27dc00a?auto=format&fit=crop&q=80&w=600' },
-      { title: 'Indian Polity - For Civil Services', author: 'M. Laxmikanth', category: 'Civics', isbn: '9789352603633', totalCopies: 12, availableCopies: 5, image: 'https://images.unsplash.com/photo-1589829085413-56de8ae18c73?auto=format&fit=crop&q=80&w=600' },
-      { title: 'Quantitative Aptitude', author: 'R.S. Aggarwal', category: 'Mathematics', isbn: '9789352535323', totalCopies: 25, availableCopies: 22, image: 'https://images.unsplash.com/photo-1596495578065-6e0763fa1178?auto=format&fit=crop&q=80&w=600' },
-      { title: 'A Brief History of Modern India', author: 'Rajiv Ahir (Spectrum)', category: 'History', isbn: '9788179307212', totalCopies: 10, availableCopies: 8, image: 'https://images.unsplash.com/photo-1461360370896-922624d12aa1?auto=format&fit=crop&q=80&w=600' },
-      { title: 'NCERT Science Class 10', author: 'NCERT', category: 'Textbook', isbn: '9788174506444', totalCopies: 25, availableCopies: 20, image: 'https://images.unsplash.com/photo-1532094349884-543bc11b234d?auto=format&fit=crop&q=80&w=600' }
+      { 
+        title: 'NCERT Mathematics Class 10', 
+        author: 'NCERT', 
+        category: 'Textbook', 
+        isbn: '9788174506345', 
+        totalCopies: 20, 
+        availableCopies: 18, 
+        image: 'https://images.unsplash.com/photo-1633613286991-611fe299c4be?auto=format&fit=crop&q=80&w=600',
+        pdfUrl: 'https://ncert.nic.in/textbook/pdf/jemh101.pdf',
+        tags: ['Math', 'NCERT', 'Class 10', 'Board Exams']
+      },
+      { 
+        title: 'Concepts of Physics (Vol 1 & 2)', 
+        author: 'H.C. Verma', 
+        category: 'Physics', 
+        isbn: '9788177091878', 
+        totalCopies: 15, 
+        availableCopies: 10, 
+        image: 'https://images.unsplash.com/photo-1636466497217-26c8c27dc00a?auto=format&fit=crop&q=80&w=600',
+        tags: ['Physics', 'JEE', 'Advanced', 'Science']
+      },
+      { 
+        title: 'Indian Polity - For Civil Services', 
+        author: 'M. Laxmikanth', 
+        category: 'Civics', 
+        isbn: '9789352603633', 
+        totalCopies: 12, 
+        availableCopies: 5, 
+        image: 'https://images.unsplash.com/photo-1589829085413-56de8ae18c73?auto=format&fit=crop&q=80&w=600',
+        tags: ['UPSC', 'Polity', 'Government', 'Civics']
+      },
+      { 
+        title: 'Quantitative Aptitude', 
+        author: 'R.S. Aggarwal', 
+        category: 'Mathematics', 
+        isbn: '9789352535323', 
+        totalCopies: 25, 
+        availableCopies: 22, 
+        image: 'https://images.unsplash.com/photo-1596495578065-6e0763fa1178?auto=format&fit=crop&q=80&w=600',
+        tags: ['Aptitude', 'Competitive Exams', 'Math']
+      },
+      { 
+        title: 'A Brief History of Modern India', 
+        author: 'Rajiv Ahir (Spectrum)', 
+        category: 'History', 
+        isbn: '9788179307212', 
+        totalCopies: 10, 
+        availableCopies: 8, 
+        image: 'https://images.unsplash.com/photo-1461360370896-922624d12aa1?auto=format&fit=crop&q=80&w=600',
+        tags: ['History', 'UPSC', 'Modern India']
+      },
+      { 
+        title: 'NCERT Science Class 10', 
+        author: 'NCERT', 
+        category: 'Textbook', 
+        isbn: '9788174506444', 
+        totalCopies: 25, 
+        availableCopies: 20, 
+        image: 'https://images.unsplash.com/photo-1532094349884-543bc11b234d?auto=format&fit=crop&q=80&w=600',
+        pdfUrl: 'https://ncert.nic.in/textbook/pdf/jesc101.pdf',
+        tags: ['Science', 'NCERT', 'Class 10']
+      }
     ]);
       console.log('Books seeded...');
     } catch (error) {

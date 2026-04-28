@@ -19,14 +19,16 @@ This project is a full-stack web application for managing the library, built wit
 
 ## Features
 
-*   **Authentication & Authorization:** User registration, login, JWT-based authentication, Admin/User roles.
-*   **User Features:** View books, search, issue/return books, view personal transaction history.
-*   **Admin Features:** Add/update/delete books, manage users, track all transactions, manage inventory.
-*   **Book Management:** Fields like title, author, category, ISBN, total/available copies.
-*   **Transactions:** Track issue/return dates, calculate late fines, prevent over-issuing.
-*   **API:** RESTful design, error handling, middleware.
-*   **Frontend:** Modern UI, responsive design, routing, API integration.
-*   **Extra Features:** Pagination, filtering, loading states, notifications.
+*   **Authentication & Authorization:** JWT-based auth with Role-Based Access Control (RBAC) for Admin, Librarian, and Student/User.
+*   **AI Knowledge Center:**
+    *   **Book Recommendations:** Smart suggestions based on reading history and preferences.
+    *   **Semantic Search:** Advanced text-based search for discovering knowledge resources.
+    *   **AI Chat Assistant:** Interactive bot for book queries and platform guidance.
+*   **Digital Library:** Integrated PDF viewer for reading books directly within the platform.
+*   **Issue & Return System:** Automated circulation workflows with due date tracking and fine calculation.
+*   **User Engagement:** Reviews and ratings system for community feedback.
+*   **Admin Dashboard:** Comprehensive analytics with charts, book management, and user tracking.
+*   **Responsive UI:** Clean, modern, and dark-themed interface built with Next.js/React and Tailwind CSS.
 
 ## Tech Stack
 

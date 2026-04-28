@@ -48,6 +48,18 @@ const bookSchema = new mongoose.Schema({
     type: String,
     default: 'https://images.unsplash.com/photo-1544947950-fa07a98d237f?auto=format&fit=crop&q=80&w=600'
   },
+  pdfUrl: {
+    type: String,
+    default: ''
+  },
+  tags: [{
+    type: String,
+    trim: true
+  }],
+  language: {
+    type: String,
+    default: 'English'
+  },
   isPaid: {
     type: Boolean,
     default: false
@@ -56,6 +68,14 @@ const bookSchema = new mongoose.Schema({
     type: Number,
     default: 0,
     min: [0, 'Price cannot be negative']
+  },
+  rating: {
+    type: Number,
+    default: 0
+  },
+  numReviews: {
+    type: Number,
+    default: 0
   }
 }, { timestamps: true });
 

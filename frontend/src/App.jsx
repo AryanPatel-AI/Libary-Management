@@ -22,6 +22,7 @@ import Orders from './pages/Orders';
 import VerifyEmail from './pages/VerifyEmail';
 import MainPage from './pages/MainPage';
 import LoginModal from './components/LoginModal';
+import ChatAssistant from './components/ChatAssistant';
 
 import { GoogleOAuthProvider } from '@react-oauth/google';
 
@@ -111,6 +112,7 @@ function AppContent({ darkMode, toggleDarkMode }) {
           isOpen={isLoginModalOpen} 
           onClose={() => setIsLoginModalOpen(false)} 
         />
+        <ChatAssistant />
       </div>
     </div>
   );
