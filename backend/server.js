@@ -170,8 +170,8 @@ module.exports = app;
 // ─── Start Server ───────────────────────────────────────────────────
 const PORT = process.env.PORT || 5000;
 if (require.main === module) {
-  app.listen(PORT, () => {
-    console.log(`\n🚀 Server running in ${process.env.NODE_ENV} mode on port ${PORT}`);
-    console.log(`📚 API: http://localhost:${PORT}/\n`);
+  app.listen(PORT, '::', () => {
+    console.log(`\n🚀 Server running in ${process.env.NODE_ENV} mode on port ${PORT} (IPv6 Enabled)`);
+    console.log(`📚 API: http://[::1]:${PORT}/ (Internal)\n`);
   });
 }
