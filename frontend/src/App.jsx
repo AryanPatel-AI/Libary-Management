@@ -86,7 +86,7 @@ function AppContent({ darkMode, toggleDarkMode }) {
           onOpenLogin={() => setIsLoginModalOpen(true)}
         />
         
-        <main className={`flex-1 ${isLandingPage ? '' : 'container mx-auto px-4 py-8'}`}>
+        <main className={`flex-1 ${isLandingPage ? '' : 'container mx-auto px-4 pt-24 pb-8'}`}>
           <Routes>
             <Route path="/" element={<LandingPage onOpenLogin={() => setIsLoginModalOpen(true)} />} />
             <Route path="/main" element={<MainPage />} />

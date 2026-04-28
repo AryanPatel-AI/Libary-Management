@@ -53,8 +53,9 @@ const seedData = async () => {
     console.log('Users seeded...');
 
     // Books
+    let books;
     try {
-      const books = await Book.create([
+      books = await Book.create([
         { title: 'The Great Gatsby', author: 'F. Scott Fitzgerald', category: 'Fiction', isbn: '9780743273565', totalCopies: 5, availableCopies: 4, image: 'https://covers.openlibrary.org/b/isbn/9780743273565-L.jpg' },
         { title: '1984', author: 'George Orwell', category: 'Dystopian', isbn: '9780451524935', totalCopies: 8, availableCopies: 8, image: 'https://covers.openlibrary.org/b/isbn/9780451524935-L.jpg' },
         { title: 'To Kill a Mockingbird', author: 'Harper Lee', category: 'Fiction', isbn: '9780060935467', totalCopies: 6, availableCopies: 6, image: 'https://covers.openlibrary.org/b/isbn/9780060935467-L.jpg' },
@@ -128,6 +129,62 @@ const seedData = async () => {
         image: 'https://images.unsplash.com/photo-1532094349884-543bc11b234d?auto=format&fit=crop&q=80&w=600',
         pdfUrl: 'https://ncert.nic.in/textbook/pdf/jesc101.pdf',
         tags: ['Science', 'NCERT', 'Class 10']
+      },
+      // B.Tech AI Subjects
+      {
+        title: 'Artificial Intelligence: A Modern Approach',
+        author: 'Stuart Russell & Peter Norvig',
+        category: 'Artificial Intelligence',
+        isbn: '9780136042594',
+        totalCopies: 10,
+        availableCopies: 8,
+        image: 'https://images.unsplash.com/photo-1677442136019-21780ecad995?auto=format&fit=crop&q=80&w=600',
+        pdfUrl: 'https://zoo.cs.yale.edu/classes/cs470/materials/aima.pdf',
+        tags: ['B.Tech AI', 'Core', 'Intelligence']
+      },
+      {
+        title: 'Machine Learning Yearning',
+        author: 'Andrew Ng',
+        category: 'Machine Learning',
+        isbn: '9780134610993',
+        totalCopies: 15,
+        availableCopies: 12,
+        image: 'https://images.unsplash.com/photo-1515879218367-8466d910aaa4?auto=format&fit=crop&q=80&w=600',
+        pdfUrl: 'https://p.migdal.pl/machine-learning-yearning.pdf',
+        tags: ['B.Tech AI', 'ML', 'Andrew Ng']
+      },
+      {
+        title: 'Deep Learning',
+        author: 'Ian Goodfellow',
+        category: 'Neural Networks',
+        isbn: '9780262035613',
+        totalCopies: 5,
+        availableCopies: 3,
+        image: 'https://images.unsplash.com/photo-1509228468518-180dd4864904?auto=format&fit=crop&q=80&w=600',
+        pdfUrl: 'https://www.deeplearningbook.org/contents/intro.html',
+        tags: ['B.Tech AI', 'Deep Learning', 'Neural Networks']
+      },
+      {
+        title: 'Python for Data Analysis',
+        author: 'Wes McKinney',
+        category: 'Data Science',
+        isbn: '9781449319793',
+        totalCopies: 20,
+        availableCopies: 15,
+        image: 'https://images.unsplash.com/photo-1526374965328-7f61d4dc18c5?auto=format&fit=crop&q=80&w=600',
+        pdfUrl: 'https://wesmckinney.com/book/',
+        tags: ['B.Tech AI', 'Python', 'Data Analysis']
+      },
+      {
+        title: 'Natural Language Processing',
+        author: 'Jacob Eisenstein',
+        category: 'NLP',
+        isbn: '9780262042840',
+        totalCopies: 8,
+        availableCopies: 6,
+        image: 'https://images.unsplash.com/photo-1546410531-bb4caa6b424d?auto=format&fit=crop&q=80&w=600',
+        pdfUrl: 'https://github.com/jacobeisenstein/gt-nlp-class/blob/master/notes/notes.pdf',
+        tags: ['B.Tech AI', 'NLP', 'Language']
       }
     ]);
       console.log('Books seeded...');

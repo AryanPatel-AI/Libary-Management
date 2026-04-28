@@ -135,8 +135,13 @@ const LandingPage = ({ onOpenLogin }) => {
         </div>
       </section>
 
-      <footer className="py-12 border-t border-white/5 text-center text-slate-500 text-sm">
-        © 2026 Patel & Co. Knowledge Center – All Rights Reserved
+      <footer className="py-12 border-t border-white/5 text-center text-slate-500 text-sm flex flex-col gap-2">
+        <p className="text-sm font-medium">
+          Made with <span className="text-red-500 animate-pulse inline-block">❤️</span> by <span className="font-bold text-slate-300">Aryan Patel</span>
+        </p>
+        <p>
+          © 2026 Patel & Co. Knowledge Center – All Rights Reserved
+        </p>
       </footer>
     </div>
   );

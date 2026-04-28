@@ -146,45 +146,34 @@ yarn dev
 ```
 The frontend application should now be running on `http://localhost:5173` (or another available port).
 
-## API Endpoints (Sample)
+## 🤖 AI & B.Tech AI Subjects
+The Knowledge Center now includes specialized resources for **B.Tech Artificial Intelligence**, complete with digital soft copies:
+*   **Artificial Intelligence: A Modern Approach** (Russell & Norvig)
+*   **Machine Learning Yearning** (Andrew Ng)
+*   **Deep Learning** (Ian Goodfellow)
+*   **Python for Data Analysis** (Wes McKinney)
+*   **Natural Language Processing** (Jacob Eisenstein)
 
-### Authentication
+## 🐳 Production Deployment (Docker)
 
-*   `POST /api/auth/register` - Register a new user
-*   `POST /api/auth/login` - Login a user
-*   `GET /api/auth/profile` - Get user profile (Protected)
+To run the entire stack in production mode:
 
-### Books
+1.  **Configure Environment**: Update `.env` with your `JWT_SECRET` and other credentials.
+2.  **Build & Run**:
+    ```bash
+    docker-compose up --build -d
+    ```
 
-*   `GET /api/books` - Get all books (Public, supports pagination/search)
-*   `GET /api/books/:id` - Get a single book by ID (Public)
-*   `POST /api/books` - Add a new book (Admin only)
-*   `PUT /api/books/:id` - Update a book (Admin only)
-*   `DELETE /api/books/:id` - Delete a book (Admin only)
+The system will initialize:
+*   **MongoDB**: Data persisted in `mongodb_data` volume.
+*   **Backend**: Production Express API on port 5001.
+*   **Frontend**: Optimized Vite build served via Nginx on port 3000.
 
-### Transactions
+## 📄 API Documentation
 
-*   `POST /api/transactions/issue` - Issue a book (User only)
-*   `PUT /api/transactions/return/:id` - Return an issued book (User only)
-*   `GET /api/transactions/my-books` - Get user's issued books (User only)
-*   `GET /api/transactions` - Get all transactions (Admin only)
+Full API documentation and PostgreSQL schema are available in:
+*   `schema.sql`: Database relationship definitions.
+*   `backend/README.md`: Endpoint details.
 
-### Users
-
-*   `GET /api/users` - Get all users (Admin only)
-*   `GET /api/users/:id` - Get user by ID (Admin only)
-*   `PUT /api/users/:id` - Update user details (Admin only)
-*   `DELETE /api/users/:id` - Delete a user (Admin only)
-
-## Development Notes
-
-*   **Modern UI:** Consider using a UI framework like Tailwind CSS, Material-UI, or Ant Design for a modern and responsive look.
-*   **Validation:** Implement robust input validation on both frontend and backend.
-*   **Error Handling:** Centralized error handling on the backend and user-friendly error messages on the frontend.
-*   **Loading States:** Show loading indicators for API calls.
-*   **Notifications:** Use `react-toastify` or similar for success/error messages.
-*   **Pagination & Filtering:** Implement these features in `bookController` and integrate them into the frontend `BookListPage`.
-*   **Late Fines:** The `transactionController` has basic fine calculation. This can be made configurable and more robust.
-*   **Admin User Creation:** For initial setup, you might manually create an admin user in MongoDB or add a script to create one if `ADMIN_EMAIL` and `ADMIN_PASSWORD` are set in `.env`.
-
-```
+---
+*© 2026 Patel & Co. Knowledge Center – Advanced Library Management Solution*
