@@ -45,7 +45,8 @@ const LoginModal = ({ isOpen, onClose }) => {
       ].join(' '),
     };
     const qs = new URLSearchParams(options);
-    window.location.href = `${rootUrl}?${qs.toString()}`;
+    // Use window.top.location to break out of the Hugging Face iframe
+    window.top.location.href = `${rootUrl}?${qs.toString()}`;
   };
 
   const googleLoginHandler = useGoogleLogin({
