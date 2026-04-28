@@ -4,7 +4,7 @@ import { X, Mail, Lock, User, Loader2, ArrowRight, ShieldCheck } from 'lucide-re
 import { AuthContext } from '../contexts/AuthContext';
 import { useNavigate } from 'react-router-dom';
 import { toast } from 'react-toastify';
-import { useGoogleLogin } from '@react-oauth/google';
+import { useGoogleLogin, GoogleLogin } from '@react-oauth/google';
 import axios from 'axios';
 
 const LoginModal = ({ isOpen, onClose }) => {
@@ -105,15 +105,17 @@ const LoginModal = ({ isOpen, onClose }) => {
 
           {/* Form Body */}
           <div className="p-8 space-y-6">
-            {/* Custom Google Button for better Iframe handling */}
-            <button
-              onClick={() => googleLoginHandler()}
-              disabled={loading}
-              className="w-full py-4 bg-white text-slate-900 rounded-2xl font-bold flex items-center justify-center gap-3 border border-slate-200 hover:bg-slate-50 transition-all shadow-sm active:scale-95 disabled:opacity-50"
-            >
-              <img src="https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg" className="w-5 h-5" alt="Google" />
-              <span>Continue with Google</span>
-            </button>
+            {/* Official Google Button - Most stable for Redirects/OIDC */}
+            <div className="flex justify-center">
+              <GoogleLogin
+                onSuccess={handleGoogleSuccess}
+                onError={() => toast.error('Google Auth Failed')}
+                use_fedcm_for_prompt={true}
+                theme="filled_blue"
+                shape="pill"
+                width="320px"
+              />
+            </div>
 
             <div className="relative">
               <div className="absolute inset-0 flex items-center"><div className="w-full border-t border-white/10"></div></div>
