@@ -28,7 +28,7 @@ const reviewSchema = new mongoose.Schema({
 reviewSchema.index({ user: 1, book: 1 }, { unique: true });
 
 // Update book rating after saving a review
-reviewSchema.post('save', async function() {
+reviewSchema.post('save', async function () {
   const Book = mongoose.model('Book');
   const stats = await this.constructor.aggregate([
     { $match: { book: this.book } },

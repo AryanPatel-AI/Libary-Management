@@ -17,11 +17,9 @@ const Orders = () => {
   const fetchOrders = async () => {
     try {
       setLoading(true);
-      const userInfo = JSON.parse(localStorage.getItem('userInfo'));
-      const config = { headers: { Authorization: `Bearer ${userInfo?.token}` } };
+      const token = localStorage.getItem('token');
+      const config = { headers: { Authorization: `Bearer ${token}` } };
       
-      // In a real app, this would be a dedicated /orders endpoint
-      // For now, let's fetch paid transactions as 'orders'
       const { data } = await axios.get(`${API_URL}/transactions/my-books`, config);
       
       // Filter for transactions that were 'paid' (if we had that flag, or just use history)

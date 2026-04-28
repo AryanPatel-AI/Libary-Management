@@ -19,23 +19,21 @@ const Home = () => {
   const fetchDashboardData = async () => {
     try {
       setLoading(true);
-      // Fetch books
-      const { data } = await axios.get(`${API_URL}/books?limit=20`);
+      // Fetch books and public stats in parallel
+      const [booksRes, statsRes] = await Promise.all([
+        axios.get(`${API_URL}/books?limit=100`),
+        axios.get(`${API_URL}/books/stats/public`)
+      ]);
       
-      setBooks(data.data.books || []);
+      setBooks(booksRes.data.data.books || []);
       
-      // Calculate basic metrics from books for demo purposes
-      // In a real app, you'd fetch these from an analytics endpoint
-      const allBooks = data.data.books || [];
-      const totalCount = allBooks.reduce((acc, book) => acc + book.totalCopies, 0);
-      const availableCount = allBooks.reduce((acc, book) => acc + book.availableCopies, 0);
-      const issuedCount = totalCount - availableCount;
-      
-      setMetrics({
-        totalBooks: totalCount,
-        totalUsers: 3, // Mock data from our seed
-        issuedBooks: issuedCount
-      });
+      if (statsRes.data.success) {
+        setMetrics({
+          totalBooks: statsRes.data.data.totalCopies,
+          totalUsers: statsRes.data.data.totalBooks, // Using book count as a proxy or just keep it
+          issuedBooks: statsRes.data.data.issuedBooks
+        });
+      }
       
     } catch (error) {
       console.error('Error fetching dashboard data:', error);
@@ -45,6 +43,7 @@ const Home = () => {
   };
 
   const [selectedCategory, setSelectedCategory] = useState('All');
+  const [selectedType, setSelectedType] = useState('All');
   
   const categories = ['All', 'Govt Exams', 'Engineering', 'Medical', 'Commerce', 'Science (B.Sc.)', 'Arts (B.A.)', 'Management', 'Fiction', 'Computer Science'];
 
@@ -52,7 +51,9 @@ const Home = () => {
     const matchesSearch = book.title.toLowerCase().includes(searchTerm.toLowerCase()) || 
                           book.author.toLowerCase().includes(searchTerm.toLowerCase());
     const matchesCategory = selectedCategory === 'All' || book.category === selectedCategory;
-    return matchesSearch && matchesCategory;
+    const matchesType = selectedType === 'All' || 
+                        (selectedType === 'eBook' ? !!book.pdfUrl : !book.pdfUrl);
+    return matchesSearch && matchesCategory && matchesType;
   });
 
   return (
@@ -125,7 +126,7 @@ const Home = () => {
         <aside className="w-full lg:w-64 shrink-0">
           <div className="bg-white dark:bg-slate-900 rounded-2xl p-6 shadow-sm border border-slate-200 dark:border-slate-800 sticky top-24">
             <h3 className="font-bold text-lg text-slate-900 dark:text-white mb-4">Categories</h3>
-            <div className="space-y-2 max-h-96 overflow-y-auto pr-2 custom-scrollbar">
+            <div className="space-y-2 max-h-60 overflow-y-auto pr-2 custom-scrollbar mb-8">
               {categories.map((cat) => (
                 <button
                   key={cat}
@@ -137,6 +138,23 @@ const Home = () => {
                   }`}
                 >
                   {cat}
+                </button>
+              ))}
+            </div>
+
+            <h3 className="font-bold text-lg text-slate-900 dark:text-white mb-4">Format</h3>
+            <div className="space-y-2">
+              {['All', 'Physical', 'eBook'].map((type) => (
+                <button
+                  key={type}
+                  onClick={() => setSelectedType(type)}
+                  className={`w-full text-left px-3 py-2 rounded-lg text-sm font-medium transition-colors ${
+                    selectedType === type 
+                      ? 'bg-primary text-white shadow-sm' 
+                      : 'text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800'
+                  }`}
+                >
+                  {type === 'eBook' ? 'Digital Edition (eBook)' : type === 'Physical' ? 'Hardcover (Physical)' : 'All Formats'}
                 </button>
               ))}
             </div>

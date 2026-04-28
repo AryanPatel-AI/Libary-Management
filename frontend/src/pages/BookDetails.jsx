@@ -17,10 +17,37 @@ const BookDetails = () => {
   const [issueLoading, setIssueLoading] = useState(false);
   const [buyLoading, setBuyLoading] = useState(false);
   const [isPdfOpen, setIsPdfOpen] = useState(false);
+  const [accessLoading, setAccessLoading] = useState(false);
   const { user, setUser } = useContext(AuthContext);
 
   const currentUser = user?.data || user;
-  const hasPurchased = book ? currentUser?.purchasedBooks?.includes(book._id) : false;
+
+  const handleReadDigital = async () => {
+    try {
+      setAccessLoading(true);
+      const userInfo = JSON.parse(localStorage.getItem('userInfo'));
+      const token = userInfo?.data?.token || userInfo?.token;
+
+      if (!token) {
+        toast.error('Please login to read the digital edition.');
+        return;
+      }
+
+      const { data } = await axios.get(`${API_URL}/books/${id}/verify-access`, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+
+      if (data.hasAccess) {
+        setIsPdfOpen(true);
+      } else {
+        toast.warning(data.message || 'You do not have access to this digital edition.');
+      }
+    } catch (error) {
+      toast.error('Error verifying access.');
+    } finally {
+      setAccessLoading(false);
+    }
+  };
 
   useEffect(() => {
     const fetchBook = async () => {
@@ -28,6 +55,10 @@ const BookDetails = () => {
         setLoading(true);
         const { data } = await axios.get(`${API_URL}/books/${id}`);
         setBook(data.data.book);
+        
+        // Fetch related books in the same category
+        const relRes = await axios.get(`${API_URL}/books?category=${data.data.book.category}&limit=4`);
+        setRelatedBooks(relRes.data.data.books.filter(b => b._id !== id));
       } catch (error) {
         toast.error('Failed to load book details.');
         console.error('Error fetching book:', error);
@@ -238,9 +269,15 @@ const BookDetails = () => {
             </div>
             <div className="flex flex-col">
               <span className="text-sm text-slate-500 dark:text-slate-400 mb-1 flex items-center gap-1">
-                <Info className="w-4 h-4" /> Total Copies
+                <Info className="w-4 h-4" /> Stock Status
               </span>
-              <span className="font-medium text-slate-900 dark:text-white">{book.totalCopies}</span>
+              <span className="font-medium text-slate-900 dark:text-white">{book.availableCopies} / {book.totalCopies} Available</span>
+            </div>
+            <div className="flex flex-col">
+              <span className="text-sm text-slate-500 dark:text-slate-400 mb-1 flex items-center gap-1">
+                <BookOpen className="w-4 h-4" /> Publisher
+              </span>
+              <span className="font-medium text-slate-900 dark:text-white">{book.publisher || 'Patel & Co. Publications'}</span>
             </div>
           </div>
 
@@ -254,12 +291,13 @@ const BookDetails = () => {
           <div className="mt-auto border-t border-slate-200 dark:border-slate-700 pt-8 flex flex-col sm:flex-row gap-4">
             <div className="flex-1 flex gap-4">
               {book.isPaid ? (
-                hasPurchased ? (
+                currentUser?.purchasedBooks?.includes(book._id) ? (
                   <button
                     className="flex-1 py-4 rounded-xl font-bold text-lg transition-all flex justify-center items-center gap-2 shadow-md bg-green-500 text-white hover:bg-green-600 hover:shadow-lg"
-                    onClick={() => book.pdfUrl ? setIsPdfOpen(true) : toast.info('Digital copy not available yet')}
+                    onClick={handleReadDigital}
+                    disabled={accessLoading}
                   >
-                    Read Digital Edition
+                    {accessLoading ? <Loader2 className="w-5 h-5 animate-spin" /> : 'Read Digital Edition'}
                   </button>
                 ) : (
                   <button
@@ -275,20 +313,20 @@ const BookDetails = () => {
                 <button
                   onClick={() => {
                     if (book.pdfUrl) {
-                      setIsPdfOpen(true);
+                      handleReadDigital();
                     } else {
                       handleIssueBook();
                     }
                   }}
-                  disabled={(!isAvailable && !book.pdfUrl) || issueLoading}
+                  disabled={(!isAvailable && !book.pdfUrl) || issueLoading || accessLoading}
                   className={`flex-1 py-4 rounded-xl font-bold text-lg transition-all flex justify-center items-center gap-2 shadow-md
-                    ${(isAvailable || book.pdfUrl) && !issueLoading
+                    ${(isAvailable || book.pdfUrl) && !issueLoading && !accessLoading
                       ? 'bg-primary text-white hover:bg-primary-hover hover:shadow-lg' 
                       : 'bg-slate-100 text-slate-400 cursor-not-allowed dark:bg-slate-700 dark:text-slate-500 shadow-none'
                     }`}
                 >
-                  {issueLoading && <Loader2 className="w-5 h-5 animate-spin" />}
-                  {issueLoading ? 'Processing...' : (book.pdfUrl ? 'Read Digital' : (isAvailable ? 'Issue Free' : 'Currently Unavailable'))}
+                  {(issueLoading || accessLoading) && <Loader2 className="w-5 h-5 animate-spin" />}
+                  {issueLoading || accessLoading ? 'Processing...' : (book.pdfUrl ? 'Read Digital' : (isAvailable ? 'Issue Free' : 'Currently Unavailable'))}
                 </button>
               )}
             </div>
@@ -306,6 +344,26 @@ const BookDetails = () => {
 
       {/* Reviews Section */}
       <ReviewsSection bookId={book._id} currentUser={currentUser} />
+
+      {/* Related Books Section */}
+      {relatedBooks.length > 0 && (
+        <div className="mt-16">
+          <h2 className="text-2xl font-bold text-slate-900 dark:text-white mb-8">Related Books</h2>
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+            {relatedBooks.map((relBook, index) => (
+              <div key={relBook._id} className="bg-white dark:bg-slate-800 rounded-2xl p-4 shadow-sm border border-slate-100 dark:border-slate-700">
+                <Link to={`/books/${relBook._id}`}>
+                  <div className="h-40 bg-slate-50 dark:bg-slate-900 rounded-xl mb-4 overflow-hidden">
+                    <img src={relBook.image} alt={relBook.title} className="w-full h-full object-cover" />
+                  </div>
+                  <h4 className="font-bold text-slate-900 dark:text-white truncate">{relBook.title}</h4>
+                  <p className="text-xs text-slate-500 truncate">by {relBook.author}</p>
+                </Link>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
 
       {/* PDF Viewer Modal */}
       {isPdfOpen && (

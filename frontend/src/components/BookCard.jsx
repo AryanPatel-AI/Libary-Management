@@ -146,6 +146,11 @@ const BookCard = ({ book, index }) => {
             <span className={`text-xs font-medium px-2 py-1 rounded-md shrink-0 ${isAvailable ? 'bg-green-100 text-green-700 dark:bg-green-500/20 dark:text-green-400' : 'bg-red-100 text-red-700 dark:bg-red-500/20 dark:text-red-400'}`}>
               {isAvailable ? `${book.availableCopies} Left` : 'Out of Stock'}
             </span>
+            {book.pdfUrl && (
+              <span className="text-[10px] font-bold uppercase tracking-tighter bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400 px-2 py-1 rounded-md">
+                eBook
+              </span>
+            )}
           </div>
           
           <h3 className="text-lg font-bold text-slate-900 dark:text-white leading-tight mb-1 line-clamp-2 group-hover:text-primary transition-colors">

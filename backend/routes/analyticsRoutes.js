@@ -15,5 +15,6 @@ router.get('/dashboard', getDashboardStats);
 router.get('/popular-books', getMostBorrowedBooks);
 router.get('/overdue', getOverdueBooks);
 router.get('/monthly-report', getMonthlyReport);
+router.get('/logs', require('../controllers/logController').getAuditLogs);
 
 module.exports = router;

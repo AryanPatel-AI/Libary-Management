@@ -15,14 +15,11 @@ const getBooks = asyncHandler(async (req, res) => {
   // Build query
   let query = {};
 
-  // Text search across title, author, category
+  // Text search across title, author, category using $text index
   if (req.query.search && req.query.search.trim()) {
-    const escaped = escapeRegex(req.query.search.trim());
-    query.$or = [
-      { title: { $regex: escaped, $options: 'i' } },
-      { author: { $regex: escaped, $options: 'i' } },
-      { category: { $regex: escaped, $options: 'i' } }
-    ];
+    const searchTerm = req.query.search.trim();
+    // Try $text search first
+    query.$text = { $search: searchTerm };
   }
 
   // Filter by category
@@ -106,7 +103,7 @@ const createBook = asyncHandler(async (req, res) => {
     throw new Error('A book with this ISBN already exists');
   }
 
-  const book = await Book.create({
+  const book = new Book({
     title,
     author,
     category,
@@ -116,6 +113,9 @@ const createBook = asyncHandler(async (req, res) => {
     publishedYear,
     totalCopies
   });
+
+  book.$locals.userId = req.user._id;
+  await book.save();
 
   res.status(201).json({
     success: true,
@@ -165,10 +165,13 @@ const updateBook = asyncHandler(async (req, res) => {
     }
   });
 
-  book = await Book.findByIdAndUpdate(req.params.id, updatePayload, {
-    new: true,
-    runValidators: true
+  // Apply updates
+  Object.keys(updatePayload).forEach(key => {
+    book[key] = updatePayload[key];
   });
+
+  book.$locals.userId = req.user._id;
+  await book.save();
 
   res.json({
     success: true,
@@ -194,7 +197,7 @@ const deleteBook = asyncHandler(async (req, res) => {
     throw new Error(`Cannot delete book. ${issuedCopies} copies are currently issued.`);
   }
 
-  await Book.findByIdAndDelete(req.params.id);
+  await Book.findByIdAndDelete(req.params.id, { userId: req.user._id });
 
   res.json({
     success: true,
@@ -202,4 +205,75 @@ const deleteBook = asyncHandler(async (req, res) => {
   });
 });
 
-module.exports = { getBooks, getBookById, createBook, updateBook, deleteBook };
+// @desc    Verify access to digital book
+// @route   GET /api/books/:id/verify-access
+// @access  Private
+const verifyAccess = asyncHandler(async (req, res) => {
+  const book = await Book.findById(req.params.id);
+  const Transaction = require('../models/Transaction');
+
+  if (!book) {
+    res.status(404);
+    throw new Error('Book not found');
+  }
+
+  // Admins and Librarians always have access
+  if (req.user.role === 'admin' || req.user.role === 'librarian') {
+    return res.json({ success: true, hasAccess: true, pdfUrl: book.pdfUrl });
+  }
+
+  // Check if book is free
+  if (!book.isPaid) {
+    // Even if free, we check if they have it "issued" if it's a library book
+    // Or we can just allow free books for all logged in users.
+    // Let's assume free digital books are for all logged in members.
+    return res.json({ success: true, hasAccess: true, pdfUrl: book.pdfUrl });
+  }
+
+  // Check if user has purchased the book
+  const user = await User.findById(req.user._id);
+  if (user.purchasedBooks.includes(book._id)) {
+    return res.json({ success: true, hasAccess: true, pdfUrl: book.pdfUrl });
+  }
+
+  // Check if user has an active transaction (issued) for this book
+  const activeTransaction = await Transaction.findOne({
+    book: book._id,
+    user: req.user._id,
+    status: 'issued'
+  });
+
+  if (activeTransaction) {
+    return res.json({ success: true, hasAccess: true, pdfUrl: book.pdfUrl });
+  }
+
+  res.json({ 
+    success: true, 
+    hasAccess: false, 
+    message: 'You need to issue or purchase this book to read the digital version.' 
+  });
+});
+
+// @desc    Get public library stats
+// @route   GET /api/books/stats/public
+// @access  Public
+const getLibraryStats = asyncHandler(async (req, res) => {
+  const [totalBooks, totalCopiesDoc] = await Promise.all([
+    Book.countDocuments(),
+    Book.aggregate([{ $group: { _id: null, total: { $sum: "$totalCopies" } } }])
+  ]);
+
+  const Transaction = require('../models/Transaction');
+  const issuedBooks = await Transaction.countDocuments({ status: 'issued' });
+
+  res.json({
+    success: true,
+    data: {
+      totalBooks: totalBooks,
+      totalCopies: totalCopiesDoc[0]?.total || 0,
+      issuedBooks
+    }
+  });
+});
+
+module.exports = { getBooks, getBookById, createBook, updateBook, deleteBook, verifyAccess, getLibraryStats };

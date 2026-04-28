@@ -6,6 +6,7 @@ const User = require('../models/User');
 const Fine = require('../models/Fine');
 const calculateFine = require('../utils/calculateFine');
 const emailService = require('../utils/emailService');
+const Notification = require('../models/Notification');
 
 // @desc    Issue a book to the logged-in user
 // @route   POST /api/transactions/issue
@@ -105,6 +106,14 @@ const issueBook = asyncHandler(async (req, res) => {
     console.error('Failed to send order confirmation email:', emailError);
   }
 
+  // Create System Notification
+  await Notification.create({
+    user: userId,
+    title: 'Book Issued',
+    message: `You have successfully issued "${populatedTransaction.book.title}". Please return by ${dueDate.toLocaleDateString()}.`,
+    type: 'success'
+  });
+
   res.status(201).json({
     success: true,
     message: 'Book issued successfully',
@@ -172,6 +181,16 @@ const returnBook = asyncHandler(async (req, res) => {
       reason: 'Overdue return'
     });
   }
+
+  // Create System Notification
+  await Notification.create({
+    user: transaction.user,
+    title: 'Book Returned',
+    message: fineAmount > 0 
+      ? `Book "${transaction.book.title}" returned. Fine of ₹${fineAmount} incurred.`
+      : `Book "${transaction.book.title}" returned successfully.`,
+    type: fineAmount > 0 ? 'warning' : 'success'
+  });
 
   // Populate for response
   const populatedTransaction = await Transaction.findById(updatedTransaction._id)
@@ -318,6 +337,14 @@ const buyBook = asyncHandler(async (req, res) => {
   res.status(200).json({
     success: true,
     message: 'Book purchased successfully'
+  });
+
+  // Create System Notification
+  await Notification.create({
+    user: userId,
+    title: 'Purchase Successful',
+    message: `You now have lifetime digital access to "${book.title}".`,
+    type: 'success'
   });
 });
 

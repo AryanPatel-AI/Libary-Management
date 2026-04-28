@@ -109,6 +109,7 @@ const updateUser = asyncHandler(async (req, res) => {
   }
 
   try {
+    user.$locals.userId = req.user._id;
     const updatedUser = await user.save();
 
     res.json({
@@ -159,7 +160,7 @@ const deleteUser = asyncHandler(async (req, res) => {
     throw new Error(`Cannot delete user. They have ${activeIssues} active book(s) issued.`);
   }
 
-  await User.findByIdAndDelete(req.params.id);
+  await User.findByIdAndDelete(req.params.id, { userId: req.user._id });
 
   res.json({
     success: true,

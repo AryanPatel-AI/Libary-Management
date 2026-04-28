@@ -8,7 +8,7 @@ const {
   getTransactionById,
   buyBook
 } = require('../controllers/transactionController');
-const { protect, admin } = require('../middleware/authMiddleware');
+const { protect, admin, adminOrLibrarian } = require('../middleware/authMiddleware');
 const { issueBookValidation, mongoIdValidation } = require('../middleware/validateRequest');
 
 // User routes (protected)
@@ -17,8 +17,8 @@ router.post('/buy', protect, issueBookValidation, buyBook);
 router.put('/return/:id', protect, mongoIdValidation, returnBook);
 router.get('/my-books', protect, getMyTransactions);
 
-// Admin routes
-router.get('/', protect, admin, getAllTransactions);
-router.get('/:id', protect, admin, mongoIdValidation, getTransactionById);
+// Admin/Librarian routes
+router.get('/', protect, adminOrLibrarian, getAllTransactions);
+router.get('/:id', protect, adminOrLibrarian, mongoIdValidation, getTransactionById);
 
 module.exports = router;

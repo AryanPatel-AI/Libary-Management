@@ -1,112 +1,100 @@
-const { body, param, query, validationResult } = require('express-validator');
+const { z } = require('zod');
 
-// Middleware to check validation results
-const validate = (req, res, next) => {
-  const errors = validationResult(req);
-  if (!errors.isEmpty()) {
+// Middleware to validate request using Zod schema
+const validate = (schema) => (req, res, next) => {
+  try {
+    schema.parse({
+      body: req.body,
+      query: req.query,
+      params: req.params,
+    });
+    next();
+  } catch (error) {
     return res.status(400).json({
       success: false,
       message: 'Validation failed',
-      errors: errors.array().map((err) => ({
-        field: err.path,
-        message: err.msg
-      }))
+      errors: error.errors.map((err) => ({
+        field: err.path.join('.'),
+        message: err.message,
+      })),
     });
   }
-  next();
 };
 
-// --- Registration Validation ---
-const registerValidation = [
-  body('name')
-    .trim()
-    .notEmpty().withMessage('Name is required')
-    .isLength({ min: 2, max: 50 }).withMessage('Name must be between 2 and 50 characters'),
-  body('email')
-    .trim()
-    .notEmpty().withMessage('Email is required')
-    .isEmail().withMessage('Please provide a valid email'),
-  body('password')
-    .notEmpty().withMessage('Password is required')
-    .isLength({ min: 6 }).withMessage('Password must be at least 6 characters'),
-  validate
-];
+// --- Registration Schema ---
+const registerSchema = z.object({
+  body: z.object({
+    name: z.string().min(2, 'Name must be at least 2 characters').max(50),
+    email: z.string().email('Invalid email format'),
+    password: z.string().min(6, 'Password must be at least 6 characters'),
+    phone: z.string().optional(),
+  }),
+});
 
-// --- Login Validation ---
-const loginValidation = [
-  body('email')
-    .trim()
-    .notEmpty().withMessage('Email is required')
-    .isEmail().withMessage('Please provide a valid email'),
-  body('password')
-    .notEmpty().withMessage('Password is required'),
-  validate
-];
+// --- Login Schema ---
+const loginSchema = z.object({
+  body: z.object({
+    email: z.string().email('Invalid email format'),
+    password: z.string().min(1, 'Password is required'),
+  }),
+});
 
-// --- Book Creation/Update Validation ---
-const bookValidation = [
-  body('title')
-    .trim()
-    .notEmpty().withMessage('Book title is required'),
-  body('author')
-    .trim()
-    .notEmpty().withMessage('Author is required'),
-  body('isbn')
-    .trim()
-    .notEmpty().withMessage('ISBN is required'),
-  body('category')
-    .trim()
-    .notEmpty().withMessage('Category is required'),
-  body('totalCopies')
-    .notEmpty().withMessage('Total copies is required')
-    .isInt({ min: 0 }).withMessage('Total copies must be a non-negative integer'),
-  validate
-];
+// --- Book Creation Schema ---
+const bookSchema = z.object({
+  body: z.object({
+    title: z.string().min(1, 'Title is required'),
+    author: z.string().min(1, 'Author is required'),
+    isbn: z.string().min(1, 'ISBN is required'),
+    category: z.string().min(1, 'Category is required'),
+    totalCopies: z.number().int().min(0, 'Total copies must be non-negative'),
+    description: z.string().optional(),
+    publisher: z.string().optional(),
+    publishedYear: z.number().optional(),
+    image: z.string().url().optional().or(z.literal('')),
+    pdfUrl: z.string().url().optional().or(z.literal('')),
+    tags: z.array(z.string()).optional(),
+  }),
+});
 
-// --- Book Update Validation (partial — all fields optional) ---
-const bookUpdateValidation = [
-  body('title')
-    .optional()
-    .trim()
-    .notEmpty().withMessage('Book title cannot be empty'),
-  body('author')
-    .optional()
-    .trim()
-    .notEmpty().withMessage('Author cannot be empty'),
-  body('isbn')
-    .optional()
-    .trim()
-    .notEmpty().withMessage('ISBN cannot be empty'),
-  body('category')
-    .optional()
-    .trim()
-    .notEmpty().withMessage('Category cannot be empty'),
-  body('totalCopies')
-    .optional()
-    .isInt({ min: 0 }).withMessage('Total copies must be a non-negative integer'),
-  validate
-];
+// --- Book Update Schema ---
+const bookUpdateSchema = z.object({
+  body: z.object({
+    title: z.string().optional(),
+    author: z.string().optional(),
+    isbn: z.string().optional(),
+    category: z.string().optional(),
+    totalCopies: z.number().int().min(0).optional(),
+    description: z.string().optional(),
+    publisher: z.string().optional(),
+    publishedYear: z.number().optional(),
+    image: z.string().url().optional().or(z.literal('')),
+    pdfUrl: z.string().url().optional().or(z.literal('')),
+    tags: z.array(z.string()).optional(),
+  }),
+});
 
-// --- Issue Book Validation ---
-const issueBookValidation = [
-  body('bookId')
-    .notEmpty().withMessage('Book ID is required')
-    .isMongoId().withMessage('Invalid Book ID format'),
-  validate
-];
+// --- Issue Book Schema ---
+const issueBookSchema = z.object({
+  body: z.object({
+    bookId: z.string().regex(/^[0-9a-fA-F]{24}$/, 'Invalid Book ID format'),
+    memberId: z.string().optional(), // For librarian use
+    days: z.number().int().min(1).max(30).optional(),
+  }),
+});
 
-// --- MongoDB ObjectId Param Validation ---
-const mongoIdValidation = [
-  param('id')
-    .isMongoId().withMessage('Invalid ID format'),
-  validate
-];
+// --- MongoDB ObjectId Param Schema ---
+const mongoIdSchema = z.object({
+  params: z.object({
+    id: z.string().regex(/^[0-9a-fA-F]{24}$/, 'Invalid ID format'),
+  }),
+});
 
 module.exports = {
-  registerValidation,
-  loginValidation,
-  bookValidation,
-  bookUpdateValidation,
-  issueBookValidation,
-  mongoIdValidation
+  validate,
+  registerValidation: validate(registerSchema),
+  loginValidation: validate(loginSchema),
+  bookValidation: validate(bookSchema),
+  bookUpdateValidation: validate(bookUpdateSchema),
+  issueBookValidation: validate(issueBookSchema),
+  mongoIdValidation: validate(mongoIdSchema),
 };

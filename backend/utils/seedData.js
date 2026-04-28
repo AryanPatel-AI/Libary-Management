@@ -25,28 +25,27 @@ const seedData = async () => {
     console.log('Data cleared...');
 
     // Users
-    const salt = await bcrypt.genSalt(10);
-    const adminPassword = await bcrypt.hash('Admin@123', salt);
-    const memberPassword = await bcrypt.hash('Member@123', salt);
-
     const users = await User.create([
       {
         name: 'Admin User',
         email: 'admin@library.com',
-        password: adminPassword,
-        role: 'admin'
+        password: 'Admin@123',
+        role: 'admin',
+        isVerified: true
       },
       {
         name: 'John Doe',
         email: 'john@example.com',
-        password: memberPassword,
-        role: 'user'
+        password: 'Member@123',
+        role: 'user',
+        isVerified: true
       },
       {
         name: 'Jane Smith',
         email: 'jane@example.com',
-        password: memberPassword,
-        role: 'user'
+        password: 'Member@123',
+        role: 'user',
+        isVerified: true
       }
     ]);
 
@@ -185,6 +184,132 @@ const seedData = async () => {
         image: 'https://images.unsplash.com/photo-1546410531-bb4caa6b424d?auto=format&fit=crop&q=80&w=600',
         pdfUrl: 'https://github.com/jacobeisenstein/gt-nlp-class/blob/master/notes/notes.pdf',
         tags: ['B.Tech AI', 'NLP', 'Language']
+      },
+      // Business & Finance
+      {
+        title: 'The Intelligent Investor',
+        author: 'Benjamin Graham',
+        category: 'Finance',
+        isbn: '9780060555665',
+        totalCopies: 10,
+        availableCopies: 10,
+        image: 'https://images.unsplash.com/photo-1590283603385-17ffb3a7f29f?auto=format&fit=crop&q=80&w=600',
+        tags: ['Investing', 'Stocks', 'Finance']
+      },
+      {
+        title: 'Rich Dad Poor Dad',
+        author: 'Robert Kiyosaki',
+        category: 'Finance',
+        isbn: '9781612680194',
+        totalCopies: 15,
+        availableCopies: 15,
+        image: 'https://images.unsplash.com/photo-1579621970563-ebec7560ff3e?auto=format&fit=crop&q=80&w=600',
+        tags: ['Finance', 'Self-Help', 'Money']
+      },
+      {
+        title: 'Zero to One',
+        author: 'Peter Thiel',
+        category: 'Management',
+        isbn: '9780804139298',
+        totalCopies: 12,
+        availableCopies: 12,
+        image: 'https://images.unsplash.com/photo-1512428559087-560fa5ceab42?auto=format&fit=crop&q=80&w=600',
+        tags: ['Startup', 'Business', 'Management']
+      },
+      // Medical
+      {
+        title: 'Gray\'s Anatomy',
+        author: 'Henry Gray',
+        category: 'Medical',
+        isbn: '9780443066764',
+        totalCopies: 5,
+        availableCopies: 5,
+        image: 'https://images.unsplash.com/photo-1530026405186-ed1f139313f8?auto=format&fit=crop&q=80&w=600',
+        tags: ['Medical', 'Anatomy', 'Reference']
+      },
+      {
+        title: 'Harrison\'s Principles of Internal Medicine',
+        author: 'Anthony Fauci et al.',
+        category: 'Medical',
+        isbn: '9781259640032',
+        totalCopies: 3,
+        availableCopies: 3,
+        image: 'https://images.unsplash.com/photo-1576091160550-2173bdd99602?auto=format&fit=crop&q=80&w=600',
+        tags: ['Medical', 'Internal Medicine', 'Advanced']
+      },
+      // Engineering
+      {
+        title: 'Design of Machine Elements',
+        author: 'V.B. Bhandari',
+        category: 'Engineering',
+        isbn: '9780070681798',
+        totalCopies: 10,
+        availableCopies: 10,
+        image: 'https://images.unsplash.com/photo-1581094794329-c8112a89af12?auto=format&fit=crop&q=80&w=600',
+        tags: ['Mechanical', 'Design', 'B.Tech']
+      },
+      {
+        title: 'Signals and Systems',
+        author: 'Alan V. Oppenheim',
+        category: 'Engineering',
+        isbn: '9780138147570',
+        totalCopies: 8,
+        availableCopies: 8,
+        image: 'https://images.unsplash.com/photo-1517077304055-6e89abbf09b0?auto=format&fit=crop&q=80&w=600',
+        tags: ['Electronics', 'Signals', 'Academic']
+      },
+      // Law & Civics
+      {
+        title: 'The Constitution of India',
+        author: 'P.M. Bakshi',
+        category: 'Civics',
+        isbn: '9788175349407',
+        totalCopies: 20,
+        availableCopies: 20,
+        image: 'https://images.unsplash.com/photo-1589829545856-d10d557cf95f?auto=format&fit=crop&q=80&w=600',
+        tags: ['Law', 'Constitution', 'India']
+      },
+      // Self Help
+      {
+        title: 'Atomic Habits',
+        author: 'James Clear',
+        category: 'Self Help',
+        isbn: '9780735211292',
+        totalCopies: 30,
+        availableCopies: 28,
+        image: 'https://images.unsplash.com/photo-1544716278-ca5e3f4abd8c?auto=format&fit=crop&q=80&w=600',
+        tags: ['Habits', 'Productivity', 'Self-Help']
+      },
+      {
+        title: 'Thinking, Fast and Slow',
+        author: 'Daniel Kahneman',
+        category: 'Science (B.Sc.)',
+        isbn: '9780374275631',
+        totalCopies: 10,
+        availableCopies: 10,
+        image: 'https://images.unsplash.com/photo-1531206715517-5c0ba140b2b8?auto=format&fit=crop&q=80&w=600',
+        tags: ['Psychology', 'Economics', 'Behavioral Science']
+      },
+      // Literature
+      {
+        title: 'One Hundred Years of Solitude',
+        author: 'Gabriel García Márquez',
+        category: 'Fiction',
+        isbn: '9780060883287',
+        totalCopies: 5,
+        availableCopies: 5,
+        image: 'https://images.unsplash.com/photo-1474932430478-3a7fb0500e3f?auto=format&fit=crop&q=80&w=600',
+        tags: ['Literature', 'Classic', 'Magic Realism']
+      },
+      {
+        title: 'The Alchemist',
+        author: 'Paulo Coelho',
+        category: 'Fiction',
+        isbn: '9780062315007',
+        totalCopies: 20,
+        availableCopies: 20,
+        image: 'https://images.unsplash.com/photo-1512820790803-83ca734da794?auto=format&fit=crop&q=80&w=600',
+        tags: ['Inspiration', 'Classic', 'Adventure']
       }
     ]);
       console.log('Books seeded...');

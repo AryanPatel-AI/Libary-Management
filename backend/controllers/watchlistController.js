@@ -20,7 +20,10 @@ const addToWatchlist = asyncHandler(async (req, res) => {
   user.watchlist.push(req.params.id);
   await user.save();
 
-  res.status(200).json({ message: 'Added to watchlist' });
+  res.status(200).json({ 
+    success: true,
+    message: 'Added to watchlist' 
+  });
 });
 
 // @desc    Remove book from watchlist
@@ -40,7 +43,10 @@ const removeFromWatchlist = asyncHandler(async (req, res) => {
   
   await user.save();
 
-  res.status(200).json({ message: 'Removed from watchlist' });
+  res.status(200).json({ 
+    success: true,
+    message: 'Removed from watchlist' 
+  });
 });
 
 // @desc    Get user watchlist
@@ -53,7 +59,12 @@ const getWatchlist = asyncHandler(async (req, res) => {
     res.status(404);
     throw new Error('User not found');
   }
-  res.status(200).json(user.watchlist);
+  res.status(200).json({
+    success: true,
+    data: {
+      books: user.watchlist
+    }
+  });
 });
 
 module.exports = {

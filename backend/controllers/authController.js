@@ -6,13 +6,20 @@ const { OAuth2Client } = require('google-auth-library');
 const crypto = require('crypto');
 const emailSender = require('../services/emailSender');
 
-// Generate JWT token
+// Generate Access Token (Short-lived)
 const generateToken = (id) => {
   if (!process.env.JWT_SECRET) {
     throw new Error('JWT_SECRET environment variable is required');
   }
   return jwt.sign({ id }, process.env.JWT_SECRET, {
-    expiresIn: process.env.JWT_EXPIRES_IN || '30d',
+    expiresIn: '15m', // 15 minutes for access token
+  });
+};
+
+// Generate Refresh Token (Long-lived)
+const generateRefreshToken = (id) => {
+  return jwt.sign({ id }, process.env.JWT_SECRET, {
+    expiresIn: '7d', // 7 days for refresh token
   });
 };
 
@@ -75,7 +82,8 @@ const registerUser = asyncHandler(async (req, res) => {
         _id: user._id,
         name: user.name,
         email: user.email,
-        token: generateToken(user._id)
+        token: generateToken(user._id),
+        refreshToken: generateRefreshToken(user._id)
       }
     });
   } else {
@@ -134,6 +142,14 @@ const loginUser = asyncHandler(async (req, res) => {
       throw new Error('Password change required. Please update your password.');
     }
 
+    const accessToken = generateToken(user._id);
+    const refreshToken = generateRefreshToken(user._id);
+
+    // Save refresh token to user record
+    user.refreshTokens = user.refreshTokens || [];
+    user.refreshTokens.push(refreshToken);
+    await user.save();
+
     res.json({
       success: true,
       data: {
@@ -145,13 +161,77 @@ const loginUser = asyncHandler(async (req, res) => {
         role: user.role,
         membershipDate: user.membershipDate,
         purchasedBooks: user.purchasedBooks,
-        token: generateToken(user._id)
+        token: accessToken,
+        refreshToken: refreshToken
       }
     });
   } else {
     res.status(401);
     throw new Error('Invalid email or password');
   }
+});
+
+// @desc    Refresh access token
+// @route   POST /api/auth/refresh
+// @access  Public
+const refreshToken = asyncHandler(async (req, res) => {
+  const { refreshToken } = req.body;
+
+  if (!refreshToken) {
+    res.status(401);
+    throw new Error('Refresh token is required');
+  }
+
+  // Find user with this refresh token
+  const user = await User.findOne({ refreshTokens: refreshToken });
+
+  if (!user) {
+    res.status(403);
+    throw new Error('Invalid refresh token');
+  }
+
+  try {
+    const decoded = jwt.verify(refreshToken, process.env.JWT_SECRET);
+    
+    // Generate new tokens
+    const newAccessToken = generateToken(user._id);
+    const newRefreshToken = generateRefreshToken(user._id);
+
+    // Replace old refresh token with new one (Token Rotation)
+    user.refreshTokens = user.refreshTokens.filter(t => t !== refreshToken);
+    user.refreshTokens.push(newRefreshToken);
+    await user.save();
+
+    res.json({
+      success: true,
+      accessToken: newAccessToken,
+      refreshToken: newRefreshToken
+    });
+  } catch (error) {
+    // If refresh token is expired, remove it from user record
+    user.refreshTokens = user.refreshTokens.filter(t => t !== refreshToken);
+    await user.save();
+    res.status(403);
+    throw new Error('Refresh token expired or invalid');
+  }
+});
+
+// @desc    Logout user & clear refresh token
+// @route   POST /api/auth/logout
+// @access  Private
+const logoutUser = asyncHandler(async (req, res) => {
+  const { refreshToken } = req.body;
+  const user = await User.findById(req.user._id);
+
+  if (user && refreshToken) {
+    user.refreshTokens = user.refreshTokens.filter(t => t !== refreshToken);
+    await user.save();
+  }
+
+  res.json({
+    success: true,
+    message: 'Logged out successfully'
+  });
 });
 
 // @desc    Get current user profile
@@ -307,4 +387,4 @@ const googleLogin = asyncHandler(async (req, res) => {
   }
 });
 
-module.exports = { registerUser, loginUser, getProfile, updateProfile, verifyEmail, changePassword, googleLogin };
+module.exports = { registerUser, loginUser, refreshToken, logoutUser, getProfile, updateProfile, verifyEmail, changePassword, googleLogin };

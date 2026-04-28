@@ -23,6 +23,7 @@ import VerifyEmail from './pages/VerifyEmail';
 import MainPage from './pages/MainPage';
 import LoginModal from './components/LoginModal';
 import ChatAssistant from './components/ChatAssistant';
+import ActivityLogs from './pages/admin/ActivityLogs';
 
 import { GoogleOAuthProvider } from '@react-oauth/google';
 
@@ -102,6 +103,7 @@ function AppContent({ darkMode, toggleDarkMode }) {
               <Route index element={<AdminDashboard />} />
               <Route path="books" element={<BookManagement />} />
               <Route path="users" element={<UserManagement />} />
+              <Route path="logs" element={<ActivityLogs />} />
             </Route>
           </Routes>
         </main>

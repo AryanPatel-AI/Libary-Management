@@ -61,7 +61,8 @@ const userSchema = new mongoose.Schema({
       type: mongoose.Schema.Types.ObjectId,
       ref: 'Book'
     }
-  ]
+  ],
+  refreshTokens: [String]
 }, { timestamps: true });
 
 // Encrypt password using bcrypt before saving

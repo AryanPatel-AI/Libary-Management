@@ -99,6 +99,10 @@ app.use('/api/watchlist', require('./routes/watchlistRoutes'));
 app.use('/api/ai', require('./routes/aiRoutes'));
 app.use('/api/fines', fineRoutes);
 app.use('/api/analytics', analyticsRoutes);
+app.use('/api/upload', require('./routes/uploadRoutes'));
+
+// Serve Uploads Folder
+app.use('/uploads', express.static(path.join(__dirname, '/uploads')));
 
 // ─── Test Email Route ───────────────────────────────────────────────
 app.post('/api/test-email', async (req, res) => {

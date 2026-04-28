@@ -17,10 +17,10 @@ const Watchlist = () => {
   const fetchWatchlist = async () => {
     try {
       setLoading(true);
-      const userInfo = JSON.parse(localStorage.getItem('userInfo'));
-      const config = { headers: { Authorization: `Bearer ${userInfo?.token}` } };
+      const token = localStorage.getItem('token');
+      const config = { headers: { Authorization: `Bearer ${token}` } };
       const { data } = await axios.get(`${API_URL}/watchlist`, config);
-      setBooks(data || []);
+      setBooks(data.data.books || []);
     } catch (error) {
       toast.error('Failed to load watchlist');
     } finally {
@@ -30,8 +30,8 @@ const Watchlist = () => {
 
   const handleRemove = async (id) => {
     try {
-      const userInfo = JSON.parse(localStorage.getItem('userInfo'));
-      const config = { headers: { Authorization: `Bearer ${userInfo?.token}` } };
+      const token = localStorage.getItem('token');
+      const config = { headers: { Authorization: `Bearer ${token}` } };
       await axios.delete(`${API_URL}/watchlist/${id}`, config);
       setBooks(prev => prev.filter(b => b._id !== id));
       toast.success('Removed from watchlist');

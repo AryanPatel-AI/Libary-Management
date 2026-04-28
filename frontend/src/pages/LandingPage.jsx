@@ -8,6 +8,7 @@ import {
 } from 'lucide-react';
 import Navbar from '../components/Navbar';
 import ParticlesBackground from '../components/ParticlesBackground';
+import ContactSection from '../components/ContactSection';
 
 const LandingPage = ({ onOpenLogin }) => {
   const features = [
@@ -109,6 +110,8 @@ const LandingPage = ({ onOpenLogin }) => {
         </div>
       </section>
 
+      <ContactSection />
+
       {/* Minimal CTA / Stats Section */}
       <section className="py-32 relative overflow-hidden bg-slate-950/50">
         <div className="container mx-auto px-6 relative z-10">
@@ -135,13 +138,18 @@ const LandingPage = ({ onOpenLogin }) => {
         </div>
       </section>
 
-      <footer className="py-12 border-t border-white/5 text-center text-slate-500 text-sm flex flex-col gap-2">
-        <p className="text-sm font-medium">
-          Made with <span className="text-red-500 animate-pulse inline-block">❤️</span> by <span className="font-bold text-slate-300">Aryan Patel</span>
-        </p>
-        <p>
-          © 2026 Patel & Co. Knowledge Center – All Rights Reserved
-        </p>
+      <footer className="py-12 border-t border-white/5 text-center text-slate-500 text-sm flex flex-col gap-2 bg-[#030712]">
+        <div className="container mx-auto px-6">
+          <p className="text-base font-bold text-slate-400 mb-4">
+            Patel & Co. Knowledge Center
+          </p>
+          <p className="text-sm font-medium mb-4">
+            Made with <span className="text-red-500 animate-pulse inline-block">❤️</span> by <span className="font-extrabold text-white">Aryan Patel</span>
+          </p>
+          <p className="text-xs opacity-50">
+            © 2026 Patel & Co. Limited – Industrial Grade Knowledge Management
+          </p>
+        </div>
       </footer>
     </div>
   );
