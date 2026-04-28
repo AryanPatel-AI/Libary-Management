@@ -345,16 +345,24 @@ const googleLogin = asyncHandler(async (req, res) => {
     
     // Try to verify as ID Token first
     try {
+      console.log('Attempting ID Token verification...');
       const ticket = await client.verifyIdToken({
         idToken: token,
         audience: process.env.GOOGLE_CLIENT_ID,
       });
       payload = ticket.getPayload();
+      console.log('ID Token verification successful');
     } catch (idError) {
       // If ID token fails, try as Access Token
       console.log('ID Token verification failed, trying Access Token...');
-      const response = await axios.get(`https://www.googleapis.com/oauth2/v3/userinfo?access_token=${token}`);
-      payload = response.data;
+      try {
+        const response = await axios.get(`https://www.googleapis.com/oauth2/v3/userinfo?access_token=${token}`);
+        payload = response.data;
+        console.log('Access Token verification successful');
+      } catch (accessError) {
+        console.error('Access Token verification failed:', accessError.response?.data || accessError.message);
+        throw new Error('All Google verification methods failed');
+      }
     }
 
     if (!payload) {
