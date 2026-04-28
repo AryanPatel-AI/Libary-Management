@@ -5,6 +5,7 @@ const jwt = require('jsonwebtoken');
 const { OAuth2Client } = require('google-auth-library');
 const crypto = require('crypto');
 const emailSender = require('../services/emailSender');
+const axios = require('axios');
 
 // Generate Access Token (Short-lived)
 const generateToken = (id) => {
@@ -340,19 +341,34 @@ const googleLogin = asyncHandler(async (req, res) => {
   const client = new OAuth2Client(process.env.GOOGLE_CLIENT_ID);
 
   try {
-    const ticket = await client.verifyIdToken({
-      idToken: token,
-      audience: process.env.GOOGLE_CLIENT_ID,
-    });
+    let payload;
+    
+    // Try to verify as ID Token first
+    try {
+      const ticket = await client.verifyIdToken({
+        idToken: token,
+        audience: process.env.GOOGLE_CLIENT_ID,
+      });
+      payload = ticket.getPayload();
+    } catch (idError) {
+      // If ID token fails, try as Access Token
+      console.log('ID Token verification failed, trying Access Token...');
+      const response = await axios.get(`https://www.googleapis.com/oauth2/v3/userinfo?access_token=${token}`);
+      payload = response.data;
+    }
 
-    const payload = ticket.getPayload();
-    const { email, name, picture } = payload;
+    if (!payload) {
+      res.status(401);
+      throw new Error('Invalid Google token');
+    }
+
+    const { email, name, picture, sub } = payload;
 
     let user = await User.findOne({ email });
 
     if (!user) {
       user = await User.create({
-        name,
+        name: name || 'Google User',
         email,
         password: crypto.randomBytes(16).toString('hex'),
         isVerified: true,
@@ -362,8 +378,10 @@ const googleLogin = asyncHandler(async (req, res) => {
       // Update avatar if it changed or was empty
       if (picture && user.avatar !== picture) {
         user.avatar = picture;
-        await user.save();
       }
+      // Ensure Google users are verified
+      user.isVerified = true;
+      await user.save();
     }
 
     res.json({
@@ -383,7 +401,7 @@ const googleLogin = asyncHandler(async (req, res) => {
   } catch (error) {
     console.error('❌ Google Token Verification Error:', error.message);
     res.status(401);
-    throw new Error('Invalid Google token');
+    throw new Error('Invalid Google token: ' + error.message);
   }
 });
 
