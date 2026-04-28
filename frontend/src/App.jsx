@@ -1,9 +1,9 @@
 import React from 'react';
-import { BrowserRouter as Router, Routes, Route, useLocation } from 'react-router-dom';
+import { BrowserRouter as Router, Routes, Route, useLocation, useNavigate } from 'react-router-dom';
 import { ToastContainer } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
 
-import { AuthProvider } from './contexts/AuthContext';
+import { AuthProvider, AuthContext } from './contexts/AuthContext';
 import { GOOGLE_CLIENT_ID } from './api/config';
 import Header from './components/Header';
 import Home from './pages/Home';
@@ -47,6 +47,22 @@ function App() {
     return () => mediaQuery.removeEventListener('change', handleChange);
   }, []);
 
+  React.useEffect(() => {
+    const handleHashLogin = async () => {
+      const hash = window.location.hash;
+      if (hash && hash.includes('access_token=')) {
+        const params = new URLSearchParams(hash.substring(1));
+        const accessToken = params.get('access_token');
+        if (accessToken) {
+          sessionStorage.setItem('pending_google_token', accessToken);
+          window.history.replaceState({}, document.title, window.location.pathname);
+          window.location.reload(); 
+        }
+      }
+    };
+    handleHashLogin();
+  }, []);
+
   const toggleDarkMode = () => {
     const newMode = !darkMode;
     setDarkMode(newMode);
@@ -71,8 +87,26 @@ function App() {
 
 function AppContent({ darkMode, toggleDarkMode }) {
   const location = useLocation();
+  const navigate = useNavigate();
+  const { googleLogin } = React.useContext(AuthContext);
   const [isLoginModalOpen, setIsLoginModalOpen] = React.useState(false);
   const isLandingPage = location.pathname === '/';
+
+  React.useEffect(() => {
+    const processPendingLogin = async () => {
+      const token = sessionStorage.getItem('pending_google_token');
+      if (token) {
+        sessionStorage.removeItem('pending_google_token');
+        try {
+          await googleLogin(token);
+          navigate('/main');
+        } catch (err) {
+          console.error('Pending login failed:', err);
+        }
+      }
+    };
+    processPendingLogin();
+  }, [googleLogin, navigate]);
 
   return (
     <div className={`min-h-screen transition-colors duration-300 flex flex-col relative overflow-hidden ${darkMode ? 'dark' : ''} ${isLandingPage ? 'bg-[#030712]' : 'bg-slate-50 dark:bg-slate-900'}`}>

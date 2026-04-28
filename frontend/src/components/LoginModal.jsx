@@ -18,20 +18,34 @@ const LoginModal = ({ isOpen, onClose }) => {
     if (!tokenResponse) return;
     setLoading(true);
     try {
-      // In redirect mode or with useGoogleLogin, we might get a code or a token
       const credential = tokenResponse.credential || tokenResponse.access_token;
-      if (!credential) throw new Error('No credential received from Google');
-
+      if (!credential) throw new Error('No credential received');
       await googleLogin(credential);
-      toast.success('Access Granted via Google');
+      toast.success('Successfully logged in!');
       onClose();
       navigate('/main');
     } catch (err) {
-      console.error('Google Auth Error:', err);
-      toast.error('Google Login failed. Please use email login.');
+      toast.error('Login failed. Try "Direct Login" fallback.');
     } finally {
       setLoading(false);
     }
+  };
+
+  const handleGoogleRedirectLogin = () => {
+    const rootUrl = 'https://accounts.google.com/o/oauth2/v2/auth';
+    const options = {
+      redirect_uri: window.location.origin,
+      client_id: GOOGLE_CLIENT_ID,
+      access_type: 'online',
+      response_type: 'token',
+      prompt: 'consent',
+      scope: [
+        'https://www.googleapis.com/auth/userinfo.profile',
+        'https://www.googleapis.com/auth/userinfo.email',
+      ].join(' '),
+    };
+    const qs = new URLSearchParams(options);
+    window.location.href = `${rootUrl}?${qs.toString()}`;
   };
 
   const googleLoginHandler = useGoogleLogin({
@@ -105,16 +119,25 @@ const LoginModal = ({ isOpen, onClose }) => {
 
           {/* Form Body */}
           <div className="p-8 space-y-6">
-            {/* Official Google Button - Most stable for Redirects/OIDC */}
-            <div className="flex justify-center">
-              <GoogleLogin
-                onSuccess={handleGoogleSuccess}
-                onError={() => toast.error('Google Auth Failed')}
-                use_fedcm_for_prompt={true}
-                theme="filled_blue"
-                shape="pill"
-                width="320px"
-              />
+            <div className="space-y-3">
+              <div className="flex justify-center">
+                <GoogleLogin
+                  onSuccess={handleGoogleSuccess}
+                  onError={() => toast.error('Google Auth Failed')}
+                  use_fedcm_for_prompt={true}
+                  theme="filled_blue"
+                  shape="pill"
+                  width="100%"
+                />
+              </div>
+              
+              <button
+                onClick={handleGoogleRedirectLogin}
+                className="w-full py-2.5 text-[10px] font-black uppercase tracking-widest text-slate-500 hover:text-primary transition-colors flex items-center justify-center gap-2"
+              >
+                <div className="w-1.5 h-1.5 rounded-full bg-indigo-500 animate-pulse"></div>
+                Google Login (Iframe / White Screen Fallback)
+              </button>
             </div>
 
             <div className="relative">
