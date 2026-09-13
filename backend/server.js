@@ -62,12 +62,15 @@ const limiter = rateLimit({
 });
 app.use('/api', limiter);
 
+const fs = require('fs');
+
 // ─── Core Middleware ────────────────────────────────────────────────
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true }));
 const allowedOrigins = [
   ...(process.env.ALLOWED_ORIGINS ? process.env.ALLOWED_ORIGINS.split(',').map(o => o.trim()) : []),
   process.env.FRONTEND_URL,
+  'https://frontend-nu-ten-22.vercel.app',
   'http://localhost:3000',
   'http://localhost:5173'
 ].filter(Boolean);
@@ -76,7 +79,13 @@ app.use(cors({
   origin: (origin, callback) => {
     // Allow requests with no origin (e.g. mobile apps, curl, server-to-server)
     if (!origin) return callback(null, true);
-    if (process.env.NODE_ENV !== 'production' || allowedOrigins.length === 0 || allowedOrigins.includes('*') || allowedOrigins.includes(origin)) {
+    if (
+      process.env.NODE_ENV !== 'production' ||
+      allowedOrigins.length === 0 ||
+      allowedOrigins.includes('*') ||
+      allowedOrigins.includes(origin) ||
+      /^https:\/\/.*\.vercel\.app$/.test(origin)
+    ) {
       return callback(null, true);
     }
     return callback(new Error('Blocked by CORS'));
@@ -136,11 +145,36 @@ app.post('/api/test-email', async (req, res) => {
   }
 });
 
-// ─── Production Configuration ──────────────────────────────────────
-if (process.env.NODE_ENV === 'production') {
-  const frontendPath = path.join(__dirname, '../frontend/dist');
+// ─── Health Check & API Status (Available in both Dev & Prod) ────────
+app.get(['/api', '/api/health', '/health'], (req, res) => {
+  const dbState = mongoose.connection.readyState;
+  const dbStatus = dbState === 1 ? 'connected' : dbState === 2 ? 'connecting' : 'disconnected';
+
+  res.status(200).json({
+    success: true,
+    message: '📚 Library Management API is running...',
+    version: '1.0.0',
+    dbStatus,
+    endpoints: {
+      auth: '/api/auth',
+      books: '/api/books',
+      transactions: '/api/transactions',
+      users: '/api/users',
+      fines: '/api/fines',
+      analytics: '/api/analytics',
+      reservations: '/api/reservations',
+      watchlist: '/api/watchlist'
+    }
+  });
+});
+
+// ─── Frontend or Root API Handling ─────────────────────────────────
+const frontendPath = path.join(__dirname, '../frontend/dist');
+const hasStaticFrontend = fs.existsSync(frontendPath) && fs.existsSync(path.join(frontendPath, 'index.html'));
+
+if (hasStaticFrontend) {
   app.use(express.static(frontendPath));
-console.log('✅ Serving static frontend from', frontendPath);
+  console.log('✅ Serving static frontend from', frontendPath);
 
   app.get('*', (req, res, next) => {
     // If it's an API route, let it fall through to error handlers
@@ -150,26 +184,13 @@ console.log('✅ Serving static frontend from', frontendPath);
     res.sendFile(path.join(frontendPath, 'index.html'));
   });
 } else {
-  // ─── Health Check (Dev only) ─────────────────────────────────────────
-  app.get(['/', '/api'], (req, res) => {
-    const dbState = mongoose.connection.readyState;
-    const dbStatus = dbState === 1 ? 'connected' : dbState === 2 ? 'connecting' : 'disconnected';
-
-    res.json({
+  // If no static frontend build (e.g. standalone API deployment on Render), serve API info on root
+  app.get('/', (req, res) => {
+    res.status(200).json({
       success: true,
       message: '📚 Library Management API is running...',
       version: '1.0.0',
-      dbStatus,
-      endpoints: {
-        auth: '/api/auth',
-        books: '/api/books',
-        transactions: '/api/transactions',
-        users: '/api/users',
-        fines: '/api/fines',
-        analytics: '/api/analytics',
-        reservations: '/api/reservations',
-        watchlist: '/api/watchlist'
-      }
+      status: 'healthy'
     });
   });
 }
