@@ -1,6 +1,6 @@
 import React from 'react';
 import { NavLink, Outlet } from 'react-router-dom';
-import { LayoutDashboard, Users, BookMarked, Settings, LogOut, History } from 'lucide-react';
+import { LayoutDashboard, Users, BookMarked, Settings, LogOut, History, ArrowLeftRight, Clock, DollarSign } from 'lucide-react';
 import { motion } from 'framer-motion';
 
 const AdminLayout = () => {
@@ -22,6 +22,9 @@ const AdminLayout = () => {
             { to: "/admin", icon: LayoutDashboard, label: "Dashboard", end: true },
             { to: "/admin/books", icon: BookMarked, label: "Manage Books" },
             { to: "/admin/users", icon: Users, label: "User Management" },
+            { to: "/admin/transactions", icon: ArrowLeftRight, label: "Transactions" },
+            { to: "/admin/reservations", icon: Clock, label: "Reservations" },
+            { to: "/admin/fines", icon: DollarSign, label: "Fines" },
             { to: "/admin/logs", icon: History, label: "Activity Logs" }
           ].map((item) => (
             <NavLink

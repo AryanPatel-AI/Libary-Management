@@ -86,6 +86,25 @@ class EmailSender {
     });
   }
 
+  async sendPasswordResetEmail(userEmail, userName, resetToken) {
+    const baseUrl = process.env.FRONTEND_URL || 'http://localhost:3000';
+    const resetUrl = `${baseUrl}/reset-password?token=${resetToken}`;
+    
+    return this.send({
+      to: userEmail,
+      subject: '🔒 Reset Your Patel & Co. Password',
+      html: `
+        <div style="font-family: sans-serif; max-width: 600px; margin: auto; padding: 20px; border: 1px solid #eee; border-radius: 10px;">
+          <h2 style="color: #4f46e5;">Password Reset Request</h2>
+          <p>Hi ${userName},</p>
+          <p>You requested a password reset for your account. Please click the button below to set a new password. This link is valid for 15 minutes:</p>
+          <a href="${resetUrl}" style="display: inline-block; padding: 12px 24px; background-color: #4f46e5; color: #ffffff; text-decoration: none; border-radius: 8px; font-weight: bold; margin: 20px 0;">Reset Password</a>
+          <p style="color: #666; font-size: 12px;">If you did not request a password reset, please ignore this email and your password will remain unchanged.</p>
+        </div>
+      `
+    });
+  }
+
   async sendOrderConfirmation(userEmail, userName, bookTitle, dueDate) {
     return this.send({
       to: userEmail,

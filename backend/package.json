@@ -6,7 +6,7 @@
   "scripts": {
     "start": "node server.js",
     "server": "nodemon server.js",
-    "test": "jest",
+    "test": "NODE_ENV=test jest --setupFilesAfterEnv ./tests/setup.js --runInBand --forceExit",
     "seed": "node utils/seedData.js"
   },
   "keywords": [

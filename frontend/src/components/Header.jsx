@@ -75,15 +75,6 @@ const Header = ({ darkMode, toggleDarkMode, onOpenLogin }) => {
               <Settings className="w-5 h-5 group-hover:rotate-90 transition-transform duration-500" />
               <span className="hidden sm:inline font-bold text-sm tracking-tight">Navigation</span>
             </button>
-
-            {!user && isLandingPage && (
-              <button 
-                onClick={onOpenLogin}
-                className="ml-2 bg-slate-900 dark:bg-white text-white dark:text-slate-900 px-6 py-2.5 rounded-2xl font-black text-sm hover:scale-105 active:scale-95 transition-all shadow-xl shadow-indigo-500/10"
-              >
-                Sign In
-              </button>
-            )}
           </div>
         </div>
       </header>
@@ -166,24 +157,10 @@ const Header = ({ darkMode, toggleDarkMode, onOpenLogin }) => {
                 )}
               </div>
 
-              {/* Footer Actions */}
               <div className="p-8 border-t border-slate-100 dark:border-slate-800">
-                {user ? (
-                  <button 
-                    onClick={handleLogout}
-                    className="w-full flex items-center justify-center gap-3 p-4 bg-red-50 dark:bg-red-900/10 text-red-600 dark:text-red-400 rounded-2xl font-black hover:bg-red-100 dark:hover:bg-red-900/20 transition-all"
-                  >
-                    <LogOut className="w-5 h-5" />
-                    Sign Out Session
-                  </button>
-                ) : (
-                  <button 
-                    onClick={() => { closeMenu(); onOpenLogin(); }}
-                    className="w-full flex items-center justify-center gap-3 p-4 bg-indigo-600 text-white rounded-2xl font-black hover:scale-[1.02] active:scale-[0.98] transition-all"
-                  >
-                    Initialize Account
-                  </button>
-                )}
+                <p className="text-center text-xs font-bold text-slate-400 uppercase tracking-widest">
+                  Library Management System v1.0
+                </p>
               </div>
             </motion.div>
           </div>

@@ -40,7 +40,7 @@ const auditLogPlugin = require('../utils/auditMiddleware');
 transactionSchema.pre('save', function(next) {
   if (this.status === 'returned' && this.returnDate > this.dueDate) {
     const daysLate = Math.ceil((this.returnDate - this.dueDate) / (1000 * 60 * 60 * 24));
-    this.fine = daysLate * 10; // $10 per day late
+    this.fine = daysLate * (parseInt(process.env.FINE_PER_DAY) || 5);
   }
   next();
 });
@@ -52,7 +52,7 @@ transactionSchema.pre('findOneAndUpdate', async function(next) {
     const doc = await this.model.findOne(this.getQuery());
     if (doc && update.returnDate > doc.dueDate) {
       const daysLate = Math.ceil((update.returnDate - doc.dueDate) / (1000 * 60 * 60 * 24));
-      update.fine = daysLate * 10;
+      update.fine = daysLate * (parseInt(process.env.FINE_PER_DAY) || 5);
     }
   }
   next();

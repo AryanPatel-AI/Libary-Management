@@ -90,21 +90,15 @@ const LandingPage = ({ onOpenLogin }) => {
             </p>
 
             <div className="flex flex-col sm:flex-row items-center justify-center gap-6">
-              <button
-                onClick={onOpenLogin}
+              <Link
+                to="/main"
                 className="group relative px-12 py-6 bg-indigo-600 text-white rounded-2xl font-bold text-xl overflow-hidden transition-all hover:scale-105 active:scale-95 shadow-2xl shadow-indigo-500/20"
               >
                 <div className="absolute inset-0 bg-gradient-to-r from-indigo-400 to-purple-400 opacity-0 group-hover:opacity-20 transition-opacity"></div>
                 <span className="relative flex items-center gap-2">
-                  Get Started <ArrowRight className="w-5 h-5 group-hover:translate-x-1 transition-transform" />
+                  Enter Library <ArrowRight className="w-5 h-5 group-hover:translate-x-1 transition-transform" />
                 </span>
-              </button>
-              <button
-                onClick={onOpenLogin}
-                className="px-12 py-6 bg-white/5 hover:bg-white/10 text-white border border-white/10 rounded-2xl font-bold text-xl transition-all backdrop-blur-md"
-              >
-                Sign In
-              </button>
+              </Link>
             </div>
           </motion.div>
         </div>
@@ -129,10 +123,10 @@ const LandingPage = ({ onOpenLogin }) => {
               Join the elite group of institutions revolutionizing their knowledge management.
             </p>
             <Link
-              to="/signup"
+              to="/main"
               className="inline-block px-12 py-6 bg-indigo-600 text-white rounded-2xl font-black text-xl hover:scale-105 active:scale-95 transition-all shadow-xl shadow-indigo-500/20"
             >
-              Initialize My Platform
+              Enter Knowledge Center
             </Link>
           </motion.div>
         </div>

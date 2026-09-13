@@ -50,6 +50,8 @@ const userSchema = new mongoose.Schema({
   },
   verificationToken: String,
   verificationTokenExpire: Date,
+  resetPasswordToken: String,
+  resetPasswordExpire: Date,
   watchlist: [
     {
       type: mongoose.Schema.Types.ObjectId,

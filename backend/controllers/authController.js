@@ -149,6 +149,10 @@ const loginUser = asyncHandler(async (req, res) => {
     // Save refresh token to user record
     user.refreshTokens = user.refreshTokens || [];
     user.refreshTokens.push(refreshToken);
+    // Cap to latest 5 sessions to prevent unbounded growth
+    if (user.refreshTokens.length > 5) {
+      user.refreshTokens = user.refreshTokens.slice(-5);
+    }
     await user.save();
 
     res.json({
@@ -291,7 +295,7 @@ const updateProfile = asyncHandler(async (req, res) => {
     user.verificationToken = verificationToken;
     user.verificationTokenExpire = Date.now() + 10 * 60 * 1000; // 10 minutes
     // Send verification email
-    await emailService.sendVerificationEmail(user.email, user.name, verificationToken);
+    await emailSender.sendVerificationEmail(user.email, user.name, verificationToken);
   }
 
   // Update password if provided
@@ -392,6 +396,17 @@ const googleLogin = asyncHandler(async (req, res) => {
       await user.save();
     }
 
+    const accessToken = generateToken(user._id);
+    const refreshToken = generateRefreshToken(user._id);
+
+    // Save refresh token to user record
+    user.refreshTokens = user.refreshTokens || [];
+    user.refreshTokens.push(refreshToken);
+    if (user.refreshTokens.length > 5) {
+      user.refreshTokens = user.refreshTokens.slice(-5);
+    }
+    await user.save();
+
     res.json({
       success: true,
       data: {
@@ -403,7 +418,8 @@ const googleLogin = asyncHandler(async (req, res) => {
         role: user.role,
         membershipDate: user.membershipDate,
         purchasedBooks: user.purchasedBooks,
-        token: generateToken(user._id)
+        token: accessToken,
+        refreshToken: refreshToken
       }
     });
   } catch (error) {
@@ -413,4 +429,99 @@ const googleLogin = asyncHandler(async (req, res) => {
   }
 });
 
-module.exports = { registerUser, loginUser, refreshToken, logoutUser, getProfile, updateProfile, verifyEmail, changePassword, googleLogin };
+// @desc    Request password reset token
+// @route   POST /api/auth/forgot-password
+// @access  Public
+const forgotPassword = asyncHandler(async (req, res) => {
+  const { email } = req.body;
+  if (!email) {
+    res.status(400);
+    throw new Error('Please provide an email address');
+  }
+
+  const user = await User.findOne({ email });
+  if (!user) {
+    // Avoid user enumeration: generic success response
+    return res.json({
+      success: true,
+      message: 'If an account with that email exists, a password reset link has been sent.'
+    });
+  }
+
+  // Generate reset token (unhashed sent to email, hashed stored in DB)
+  const resetToken = crypto.randomBytes(32).toString('hex');
+  const hashedToken = crypto.createHash('sha256').update(resetToken).digest('hex');
+
+  user.resetPasswordToken = hashedToken;
+  user.resetPasswordExpire = Date.now() + 15 * 60 * 1000; // 15 minutes
+  await user.save({ validateBeforeSave: false });
+
+  try {
+    await emailSender.sendPasswordResetEmail(user.email, user.name, resetToken);
+    res.json({
+      success: true,
+      message: 'If an account with that email exists, a password reset link has been sent.'
+    });
+  } catch (error) {
+    user.resetPasswordToken = undefined;
+    user.resetPasswordExpire = undefined;
+    await user.save({ validateBeforeSave: false });
+    res.status(500);
+    throw new Error('Email could not be sent. Please try again later.');
+  }
+});
+
+// @desc    Reset password using token
+// @route   POST /api/auth/reset-password
+// @access  Public
+const resetPassword = asyncHandler(async (req, res) => {
+  const { token, password } = req.body;
+
+  if (!token || !password) {
+    res.status(400);
+    throw new Error('Please provide a reset token and new password');
+  }
+
+  if (password.length < 6) {
+    res.status(400);
+    throw new Error('Password must be at least 6 characters');
+  }
+
+  const hashedToken = crypto.createHash('sha256').update(token).digest('hex');
+
+  const user = await User.findOne({
+    resetPasswordToken: hashedToken,
+    resetPasswordExpire: { $gt: Date.now() }
+  });
+
+  if (!user) {
+    res.status(400);
+    throw new Error('Invalid or expired password reset token');
+  }
+
+  // Set new password
+  user.password = password;
+  user.resetPasswordToken = undefined;
+  user.resetPasswordExpire = undefined;
+  user.refreshTokens = []; // Revoke active sessions for security
+  await user.save();
+
+  res.json({
+    success: true,
+    message: 'Password reset successful. You can now log in with your new password.'
+  });
+});
+
+module.exports = { 
+  registerUser, 
+  loginUser, 
+  refreshToken, 
+  logoutUser, 
+  getProfile, 
+  updateProfile, 
+  verifyEmail, 
+  changePassword, 
+  googleLogin,
+  forgotPassword,
+  resetPassword
+};

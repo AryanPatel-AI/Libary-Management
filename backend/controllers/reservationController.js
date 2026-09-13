@@ -128,4 +128,37 @@ const getMyReservations = asyncHandler(async (req, res) => {
   });
 });
 
-module.exports = { reserveBook, cancelReservation, getMyReservations };
+// @desc    Get all reservations (admin)
+// @route   GET /api/reservations
+// @access  Admin
+const getAllReservations = asyncHandler(async (req, res) => {
+  const page = parseInt(req.query.page) || 1;
+  const limit = parseInt(req.query.limit) || 20;
+  const skip = (page - 1) * limit;
+
+  let query = {};
+
+  if (req.query.status) {
+    query.status = req.query.status;
+  }
+
+  const total = await Reservation.countDocuments(query);
+  const reservations = await Reservation.find(query)
+    .populate('user', 'name email')
+    .populate('book', 'title author image')
+    .sort({ createdAt: -1 })
+    .skip(skip)
+    .limit(limit);
+
+  res.json({
+    success: true,
+    data: {
+      reservations,
+      page,
+      pages: Math.ceil(total / limit),
+      total
+    }
+  });
+});
+
+module.exports = { reserveBook, cancelReservation, getMyReservations, getAllReservations };

@@ -1,5 +1,6 @@
 const asyncHandler = require('express-async-handler');
 const Book = require('../models/Book');
+const User = require('../models/User');
 
 // Helper to escape regex special characters
 const escapeRegex = (s) => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');

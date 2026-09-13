@@ -77,7 +77,7 @@ const chatAssistant = asyncHandler(async (req, res) => {
   } else if (userMessage.includes("due date") || userMessage.includes("return")) {
     response = "You can view your due dates in your profile dashboard under 'Issued Books'.";
   } else if (userMessage.includes("fine")) {
-    response = "Fines are calculated at $10 per day for overdue books.";
+    response = `Fines are calculated at ₹${process.env.FINE_PER_DAY || 5} per day for overdue books.`;
   } else {
     response = "I'm the Patel & Co. Knowledge Assistant. How can I help you today? You can ask about book recommendations, how to borrow, or about due dates.";
   }

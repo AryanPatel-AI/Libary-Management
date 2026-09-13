@@ -27,6 +27,7 @@ const watchlistRoutes = require('./routes/watchlistRoutes');
 const fineRoutes = require('./routes/fineRoutes');
 const analyticsRoutes = require('./routes/analyticsRoutes');
 const emailSender = require('./services/emailSender');
+const notificationRoutes = require('./routes/notificationRoutes');
 
 // Middleware imports
 const { notFound, errorHandler } = require('./middleware/errorMiddleware');
@@ -63,25 +64,41 @@ app.use('/api', limiter);
 // ─── Core Middleware ────────────────────────────────────────────────
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true }));
+const allowedOrigins = [
+  ...(process.env.ALLOWED_ORIGINS ? process.env.ALLOWED_ORIGINS.split(',').map(o => o.trim()) : []),
+  process.env.FRONTEND_URL,
+  'http://localhost:3000',
+  'http://localhost:5173'
+].filter(Boolean);
+
 app.use(cors({
-  origin: process.env.NODE_ENV === 'production' ? process.env.ALLOWED_ORIGINS?.split(',') || [] : true,
+  origin: (origin, callback) => {
+    // Allow requests with no origin (e.g. mobile apps, curl, server-to-server)
+    if (!origin) return callback(null, true);
+    if (process.env.NODE_ENV !== 'production' || allowedOrigins.length === 0 || allowedOrigins.includes('*') || allowedOrigins.includes(origin)) {
+      return callback(null, true);
+    }
+    return callback(new Error('Blocked by CORS'));
+  },
   credentials: true
 }));
 
 app.use(morgan(process.env.NODE_ENV === 'production' ? 'common' : 'dev'));
 
 // ─── Connect to MongoDB & Seed Admin ────────────────────────────────
-(async () => {
-  try {
-    await connectDB();
-    await seedAdmin();
-    startOverdueReminders();
-    startReservationExpiryCheck();
-  } catch (error) {
-    console.error('Failed to initialize application:', error);
-    process.exit(1);
-  }
-})();
+if (process.env.NODE_ENV !== 'test') {
+  (async () => {
+    try {
+      await connectDB();
+      await seedAdmin();
+      startOverdueReminders();
+      startReservationExpiryCheck();
+    } catch (error) {
+      console.error('Failed to initialize application:', error);
+      process.exit(1);
+    }
+  })();
+}
 
 // ─── API Routes ─────────────────────────────────────────────────────
 app.use('/api/auth', authRoutes);
@@ -94,6 +111,7 @@ app.use('/api/watchlist', require('./routes/watchlistRoutes'));
 app.use('/api/ai', require('./routes/aiRoutes'));
 app.use('/api/fines', fineRoutes);
 app.use('/api/analytics', analyticsRoutes);
+app.use('/api/notifications', notificationRoutes);
 app.use('/api/upload', require('./routes/uploadRoutes'));
 
 // Serve Uploads Folder

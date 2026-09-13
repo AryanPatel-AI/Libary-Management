@@ -180,7 +180,18 @@ const LoginModal = ({ isOpen, onClose }) => {
               </div>
 
               <div className="space-y-2">
-                <label className="text-xs font-bold text-slate-500 uppercase tracking-widest ml-1">Security Key</label>
+                <div className="flex justify-between items-center">
+                  <label className="text-xs font-bold text-slate-500 uppercase tracking-widest ml-1">Security Key</label>
+                  {isLogin && (
+                    <a 
+                      href="/forgot-password" 
+                      onClick={() => onClose()} 
+                      className="text-xs font-semibold text-indigo-400 hover:text-indigo-300 transition-colors"
+                    >
+                      Forgot password?
+                    </a>
+                  )}
+                </div>
                 <div className="relative">
                   <Lock className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-500" />
                   <input 

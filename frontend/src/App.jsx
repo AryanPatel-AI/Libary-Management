@@ -9,8 +9,6 @@ import Header from './components/Header';
 import Home from './pages/Home';
 import BookDetails from './pages/BookDetails';
 import LandingPage from './pages/LandingPage';
-import Login from './pages/Login';
-import Signup from './pages/Signup';
 
 import AdminLayout from './layouts/AdminLayout';
 import AdminDashboard from './pages/admin/AdminDashboard';
@@ -22,9 +20,15 @@ import Watchlist from './pages/Watchlist';
 import Orders from './pages/Orders';
 import VerifyEmail from './pages/VerifyEmail';
 import MainPage from './pages/MainPage';
-import LoginModal from './components/LoginModal';
 import ChatAssistant from './components/ChatAssistant';
 import ActivityLogs from './pages/admin/ActivityLogs';
+import AdminTransactions from './pages/admin/AdminTransactions';
+import AdminReservations from './pages/admin/AdminReservations';
+import AdminFines from './pages/admin/AdminFines';
+import Login from './pages/Login';
+import Signup from './pages/Signup';
+import ForgotPassword from './pages/ForgotPassword';
+import ResetPassword from './pages/ResetPassword';
 
 import { GoogleOAuthProvider } from '@react-oauth/google';
 
@@ -88,25 +92,9 @@ function App() {
 function AppContent({ darkMode, toggleDarkMode }) {
   const location = useLocation();
   const navigate = useNavigate();
-  const { googleLogin } = React.useContext(AuthContext);
-  const [isLoginModalOpen, setIsLoginModalOpen] = React.useState(false);
   const isLandingPage = location.pathname === '/';
 
-  React.useEffect(() => {
-    const processPendingLogin = async () => {
-      const token = sessionStorage.getItem('pending_google_token');
-      if (token) {
-        sessionStorage.removeItem('pending_google_token');
-        try {
-          await googleLogin(token);
-          navigate('/main');
-        } catch (err) {
-          console.error('Pending login failed:', err);
-        }
-      }
-    };
-    processPendingLogin();
-  }, [googleLogin, navigate]);
+
 
   return (
     <div className={`min-h-screen transition-colors duration-300 flex flex-col relative overflow-hidden ${darkMode ? 'dark' : ''} ${isLandingPage ? 'bg-[#030712]' : 'bg-slate-50 dark:bg-slate-900'}`}>
@@ -119,25 +107,30 @@ function AppContent({ darkMode, toggleDarkMode }) {
         <Header 
           darkMode={darkMode} 
           toggleDarkMode={toggleDarkMode} 
-          onOpenLogin={() => setIsLoginModalOpen(true)}
         />
         
         <main className={`flex-1 ${isLandingPage ? '' : 'container mx-auto px-4 pt-24 pb-8'}`}>
           <Routes>
-            <Route path="/" element={<LandingPage onOpenLogin={() => setIsLoginModalOpen(true)} />} />
+            <Route path="/" element={<LandingPage />} />
             <Route path="/main" element={<MainPage />} />
             <Route path="/books" element={<Home />} />
             <Route path="/books/:id" element={<BookDetails />} />
-            <Route path="/login" element={<Login />} />
-            <Route path="/signup" element={<Signup />} />
+
             <Route path="/dashboard" element={<UserDashboard />} />
             <Route path="/watchlist" element={<Watchlist />} />
             <Route path="/orders" element={<Orders />} />
             <Route path="/verify-email" element={<VerifyEmail />} />
+            <Route path="/login" element={<Login />} />
+            <Route path="/signup" element={<Signup />} />
+            <Route path="/forgot-password" element={<ForgotPassword />} />
+            <Route path="/reset-password" element={<ResetPassword />} />
             <Route path="/admin" element={<AdminLayout />}>
               <Route index element={<AdminDashboard />} />
               <Route path="books" element={<BookManagement />} />
               <Route path="users" element={<UserManagement />} />
+              <Route path="transactions" element={<AdminTransactions />} />
+              <Route path="reservations" element={<AdminReservations />} />
+              <Route path="fines" element={<AdminFines />} />
               <Route path="logs" element={<ActivityLogs />} />
             </Route>
           </Routes>
@@ -145,10 +138,7 @@ function AppContent({ darkMode, toggleDarkMode }) {
 
         {!isLandingPage && <Footer />}
 
-        <LoginModal 
-          isOpen={isLoginModalOpen} 
-          onClose={() => setIsLoginModalOpen(false)} 
-        />
+
         <ChatAssistant />
       </div>
     </div>

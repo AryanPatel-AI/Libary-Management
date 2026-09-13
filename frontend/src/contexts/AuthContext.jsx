@@ -5,13 +5,47 @@ export const AuthContext = createContext();
 
 export const AuthProvider = ({ children }) => {
   const [user, setUser] = useState(null);
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    // Check for user stored in localStorage on initial load
-    const userInfo = localStorage.getItem('userInfo');
-    if (userInfo) {
-      setUser(JSON.parse(userInfo));
-    }
+    const restoreSession = async () => {
+      const token = localStorage.getItem('token');
+
+      if (!token) {
+        setUser(null);
+        setLoading(false);
+        return;
+      }
+
+      try {
+        const response = await fetch(`${API_URL}/auth/profile`, {
+          headers: {
+            'Authorization': `Bearer ${token}`,
+          },
+        });
+
+        if (response.ok) {
+          const data = await response.json();
+          // Reconstruct the user object shape expected by the rest of the app
+          const storedInfo = JSON.parse(localStorage.getItem('userInfo') || '{}');
+          setUser(storedInfo);
+        } else {
+          // Token is invalid or expired
+          localStorage.removeItem('token');
+          localStorage.removeItem('userInfo');
+          setUser(null);
+        }
+      } catch (error) {
+        console.error('Session restore failed:', error);
+        localStorage.removeItem('token');
+        localStorage.removeItem('userInfo');
+        setUser(null);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    restoreSession();
   }, []);
 
   const login = async (email, password) => {
@@ -34,6 +68,9 @@ export const AuthProvider = ({ children }) => {
     if (response.ok) {
       localStorage.setItem('userInfo', JSON.stringify(data));
       localStorage.setItem('token', data.data.token);
+      if (data.data.refreshToken) {
+        localStorage.setItem('refreshToken', data.data.refreshToken);
+      }
       setUser(data);
     } else {
       throw new Error(data.message || 'Login failed');
@@ -83,6 +120,9 @@ export const AuthProvider = ({ children }) => {
     if (response.ok) {
       localStorage.setItem('userInfo', JSON.stringify(data));
       localStorage.setItem('token', data.data.token);
+      if (data.data.refreshToken) {
+        localStorage.setItem('refreshToken', data.data.refreshToken);
+      }
       setUser(data);
       return data;
     } else {
@@ -93,11 +133,12 @@ export const AuthProvider = ({ children }) => {
   const logout = () => {
     localStorage.removeItem('userInfo');
     localStorage.removeItem('token');
+    localStorage.removeItem('refreshToken');
     setUser(null);
   };
 
   return (
-    <AuthContext.Provider value={{ user, setUser, login, logout, register, googleLogin }}>
+    <AuthContext.Provider value={{ user, setUser, loading, login, logout, register, googleLogin }}>
       {children}
     </AuthContext.Provider>
   );

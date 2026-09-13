@@ -151,7 +151,7 @@ const returnBook = asyncHandler(async (req, res) => {
   const fineAmount = calculateFine(transaction.dueDate, returnDate);
 
   const updatedTransaction = await Transaction.findOneAndUpdate(
-    { _id: transactionId, status: 'borrowed' },
+    { _id: transactionId, status: 'issued' },
     { $set: { status: 'returned', returnDate, fine: fineAmount } },
     { new: true }
   );
@@ -174,7 +174,7 @@ const returnBook = asyncHandler(async (req, res) => {
 
   // 4. Create fine record if applicable
   if (fineAmount > 0) {
-    await Fine.create({
+    const fineRecord = await Fine.create({
       user: transaction.user,
       transaction: transaction._id,
       amount: fineAmount,
@@ -204,7 +204,7 @@ const returnBook = asyncHandler(async (req, res) => {
       : 'Book returned successfully',
     data: {
       transaction: populatedTransaction,
-      fine: fineRecord
+      fine: fineAmount > 0 ? fineRecord : null
     }
   });
 });
