@@ -1,9 +1,10 @@
 import React, { useState, useEffect } from 'react';
 import API_URL from '../../api/config';
 import axios from 'axios';
-import { Search, Plus, Edit2, Trash2, Loader2 } from 'lucide-react';
+import { Search, Plus, Edit2, Trash2, Loader2, Layers } from 'lucide-react';
 import { toast } from 'react-toastify';
 import BookModal from '../../components/BookModal';
+import PhysicalCopiesModal from '../../components/PhysicalCopiesModal';
 import Swal from 'sweetalert2';
 
 const BookManagement = () => {
@@ -17,6 +18,8 @@ const BookManagement = () => {
   // Modal State
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [selectedBook, setSelectedBook] = useState(null);
+  const [isCopiesModalOpen, setIsCopiesModalOpen] = useState(false);
+  const [copiesModalBook, setCopiesModalBook] = useState(null);
 
   const fetchBooks = async () => {
     try {
@@ -193,7 +196,17 @@ const BookManagement = () => {
                     </div>
                   </td>
                   <td className="p-6 text-right">
-                    <div className="flex justify-end gap-3 opacity-0 group-hover:opacity-100 transition-all transform translate-x-2 group-hover:translate-x-0">
+                    <div className="flex justify-end gap-2 opacity-0 group-hover:opacity-100 transition-all transform translate-x-2 group-hover:translate-x-0">
+                      <button 
+                        onClick={() => {
+                          setCopiesModalBook(book);
+                          setIsCopiesModalOpen(true);
+                        }}
+                        className="p-2.5 text-indigo-600 hover:bg-indigo-50 dark:hover:bg-indigo-900/30 rounded-xl transition-all"
+                        title="Manage Physical Copies & Barcodes"
+                      >
+                        <Layers className="w-5 h-5" />
+                      </button>
                       <button 
                         onClick={() => openEditModal(book)}
                         className="p-2.5 text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-900/30 rounded-xl transition-all"
@@ -246,6 +259,16 @@ const BookManagement = () => {
         onSave={handleSaveBook}
         book={selectedBook}
         loading={actionLoading}
+      />
+
+      <PhysicalCopiesModal
+        isOpen={isCopiesModalOpen}
+        onClose={() => {
+          setIsCopiesModalOpen(false);
+          setCopiesModalBook(null);
+        }}
+        book={copiesModalBook}
+        onCopyChanged={fetchBooks}
       />
     </div>
   );

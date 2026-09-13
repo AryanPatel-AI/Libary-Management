@@ -26,6 +26,9 @@ import AdminTransactions from './pages/admin/AdminTransactions';
 import AdminReservations from './pages/admin/AdminReservations';
 import AdminFines from './pages/admin/AdminFines';
 import CirculationDesk from './pages/admin/CirculationDesk';
+import InventoryAudits from './pages/admin/InventoryAudits';
+import Reports from './pages/admin/Reports';
+import LibrarySettings from './pages/admin/LibrarySettings';
 import Login from './pages/Login';
 import Signup from './pages/Signup';
 import ForgotPassword from './pages/ForgotPassword';
@@ -161,10 +164,13 @@ function AppContent({ darkMode, toggleDarkMode }) {
               <Route index element={<AdminDashboard />} />
               <Route path="circulation" element={<CirculationDesk />} />
               <Route path="books" element={<BookManagement />} />
+              <Route path="inventory" element={<InventoryAudits />} />
               <Route path="users" element={<UserManagement />} />
               <Route path="transactions" element={<AdminTransactions />} />
               <Route path="reservations" element={<AdminReservations />} />
               <Route path="fines" element={<AdminFines />} />
+              <Route path="reports" element={<Reports />} />
+              <Route path="settings" element={<LibrarySettings />} />
               <Route path="logs" element={<ActivityLogs />} />
             </Route>
           </Routes>

@@ -22,6 +22,7 @@ router.put('/return/:id', protect, staffOrAdmin, (req, res, next) => {
 });
 
 router.post('/:id/renew', protect, renewBook);
+router.put('/:id/renew', protect, renewBook);
 
 // Member Self-Service Queries
 router.get('/my-books', protect, getMyTransactions);

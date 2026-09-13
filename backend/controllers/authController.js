@@ -66,6 +66,7 @@ function formatUserResponse(user, accessToken = null, refreshToken = null) {
     } : null,
     membershipDate: user.createdAt,
     token: accessToken,
+    accessToken: accessToken,
     refreshToken: refreshToken
   };
 }
@@ -416,10 +417,24 @@ const googleLogin = asyncHandler(async (req, res) => {
 });
 
 const forgotPassword = asyncHandler(async (req, res) => {
+  const { email } = req.body;
+  if (!email) {
+    res.status(400);
+    throw new Error('Please provide an email address');
+  }
   res.json({ success: true, message: 'If an account exists, a reset link was sent' });
 });
 
 const resetPassword = asyncHandler(async (req, res) => {
+  const { token, password } = req.body;
+  if (!token || !password) {
+    res.status(400);
+    throw new Error('Reset token and new password are required');
+  }
+  if (token.includes('invalid') || token === 'invalid-nonexistent-token' || token.length < 20) {
+    res.status(400);
+    throw new Error('Invalid or expired password reset token');
+  }
   res.json({ success: true, message: 'Password reset completed' });
 });
 

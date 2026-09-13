@@ -16,6 +16,7 @@ const protect = async (req, res, next) => {
   if (!token) {
     return res.status(401).json({
       success: false,
+      message: 'Not authorized, no token provided',
       error: {
         code: 'UNAUTHORIZED',
         message: 'Authentication token required'
@@ -55,6 +56,7 @@ const protect = async (req, res, next) => {
     if (!user) {
       return res.status(401).json({
         success: false,
+        message: 'Not authorized, user not found',
         error: {
           code: 'USER_NOT_FOUND',
           message: 'User belonging to this token no longer exists'
@@ -65,6 +67,7 @@ const protect = async (req, res, next) => {
     if (user.status === 'SUSPENDED' || user.status === 'DEACTIVATED') {
       return res.status(403).json({
         success: false,
+        message: `Account is ${user.status.toLowerCase()}. Please contact library administration.`,
         error: {
           code: 'ACCOUNT_SUSPENDED',
           message: `Account is ${user.status.toLowerCase()}. Please contact library administration.`
@@ -96,6 +99,7 @@ const protect = async (req, res, next) => {
   } catch (error) {
     return res.status(401).json({
       success: false,
+      message: error.name === 'TokenExpiredError' ? 'Token expired' : 'Not authorized, invalid token',
       error: {
         code: 'TOKEN_INVALID',
         message: error.name === 'TokenExpiredError' ? 'Token expired' : 'Invalid authentication token'
@@ -112,6 +116,7 @@ const requireRole = (...allowedRoles) => {
     if (!req.user) {
       return res.status(401).json({
         success: false,
+        message: 'Not authorized, authentication required',
         error: { code: 'UNAUTHORIZED', message: 'Authentication required' }
       });
     }
@@ -120,6 +125,7 @@ const requireRole = (...allowedRoles) => {
     if (!hasRole) {
       return res.status(403).json({
         success: false,
+        message: `Action requires one of the following roles: [${allowedRoles.join(', ')}]`,
         error: {
           code: 'FORBIDDEN',
           message: `Action requires one of the following roles: [${allowedRoles.join(', ')}]`

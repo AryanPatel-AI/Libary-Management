@@ -42,7 +42,12 @@ describe('Enterprise Fines & Reservation Queues Suite', () => {
       const pastDueDate = new Date();
       pastDueDate.setDate(pastDueDate.getDate() - 5);
 
-      const copy = await prisma.bookCopy.findFirst({ where: { status: 'AVAILABLE' } });
+      const copy = await prisma.bookCopy.findFirst({
+        where: {
+          status: 'AVAILABLE',
+          loans: { none: { status: 'ACTIVE' } }
+        }
+      });
       expect(copy).toBeDefined();
 
       const loan = await prisma.loan.create({

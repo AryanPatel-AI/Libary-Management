@@ -1,6 +1,20 @@
 import React from 'react';
 import { NavLink, Outlet } from 'react-router-dom';
-import { LayoutDashboard, Users, BookMarked, Settings, LogOut, History, ArrowLeftRight, Clock, DollarSign, Scan } from 'lucide-react';
+import { 
+  LayoutDashboard, 
+  Users, 
+  BookMarked, 
+  Settings, 
+  LogOut, 
+  History, 
+  ArrowLeftRight, 
+  Clock, 
+  DollarSign, 
+  Scan,
+  ClipboardCheck,
+  FileText,
+  Sliders
+} from 'lucide-react';
 import { motion } from 'framer-motion';
 
 const AdminLayout = () => {
@@ -17,15 +31,18 @@ const AdminLayout = () => {
           <p className="text-xs text-slate-500 mt-1 uppercase tracking-wider font-semibold">Aryan & Co.</p>
         </div>
         
-        <nav className="flex-1 p-4 space-y-2">
+        <nav className="flex-1 p-4 space-y-1.5 overflow-y-auto">
           {[
             { to: "/admin", icon: LayoutDashboard, label: "Dashboard", end: true },
             { to: "/admin/circulation", icon: Scan, label: "Circulation Desk" },
             { to: "/admin/books", icon: BookMarked, label: "Manage Books" },
+            { to: "/admin/inventory", icon: ClipboardCheck, label: "Stock Audits" },
             { to: "/admin/users", icon: Users, label: "User Management" },
             { to: "/admin/transactions", icon: ArrowLeftRight, label: "Transactions" },
             { to: "/admin/reservations", icon: Clock, label: "Reservations" },
             { to: "/admin/fines", icon: DollarSign, label: "Fines" },
+            { to: "/admin/reports", icon: FileText, label: "Reports & Exports" },
+            { to: "/admin/settings", icon: Sliders, label: "Policy Settings" },
             { to: "/admin/logs", icon: History, label: "Activity Logs" }
           ].map((item) => (
             <NavLink

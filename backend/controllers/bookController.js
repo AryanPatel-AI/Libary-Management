@@ -155,7 +155,14 @@ const getBooks = asyncHandler(async (req, res) => {
 
   res.json({
     success: true,
-    data: formatted,
+    data: {
+      books: formatted,
+      page: pageNum,
+      pages: Math.ceil(total / limitNum),
+      total,
+      limit: limitNum
+    },
+    books: formatted,
     pagination: {
       page: pageNum,
       limit: limitNum,

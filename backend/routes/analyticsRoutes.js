@@ -3,18 +3,22 @@ const router = express.Router();
 const {
   getDashboardStats,
   getMostBorrowedBooks,
+  getBorrowingTrends,
   getOverdueBooks,
-  getMonthlyReport
+  getMonthlyReport,
+  exportReport
 } = require('../controllers/analyticsController');
-const { protect, admin } = require('../middleware/authMiddleware');
+const { protect, staffOrAdmin } = require('../middleware/authMiddleware');
 
-// All analytics routes are admin-only
-router.use(protect, admin);
+// All analytics routes are staff/admin accessible
+router.use(protect, staffOrAdmin);
 
 router.get('/dashboard', getDashboardStats);
 router.get('/popular-books', getMostBorrowedBooks);
+router.get('/borrowing-trends', getBorrowingTrends);
 router.get('/overdue', getOverdueBooks);
 router.get('/monthly-report', getMonthlyReport);
+router.get('/export/:type', exportReport);
 router.get('/logs', require('../controllers/logController').getAuditLogs);
 
 module.exports = router;

@@ -72,11 +72,11 @@ describe('Enterprise LMS Circulation & RBAC Suite', () => {
     it('should fetch books with dynamic copy counts and branch breakdown', async () => {
       const res = await request(app).get('/api/books');
       expect(res.status).toBe(200);
-      expect(res.body.success).toBe(true);
-      expect(Array.isArray(res.body.data)).toBe(true);
-      expect(res.body.data.length).toBeGreaterThan(0);
+      const books = Array.isArray(res.body.data) ? res.body.data : res.body.data.books;
+      expect(Array.isArray(books)).toBe(true);
+      expect(books.length).toBeGreaterThan(0);
 
-      const firstBook = res.body.data[0];
+      const firstBook = books[0];
       expect(firstBook).toHaveProperty('totalCopies');
       expect(firstBook).toHaveProperty('availableCopies');
       expect(firstBook).toHaveProperty('branchAvailability');

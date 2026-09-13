@@ -126,6 +126,7 @@ app.use('/api/notifications', notificationRoutes);
 app.use('/api/copies', require('./routes/copyRoutes'));
 app.use('/api/branches', require('./routes/branchRoutes'));
 app.use('/api/inventory', require('./routes/inventoryRoutes'));
+app.use('/api/policies', require('./routes/policyRoutes'));
 app.get('/api/audit-logs', require('./middleware/authMiddleware').protect, require('./middleware/authMiddleware').admin, require('./controllers/logController').getAuditLogs);
 app.use('/api/upload', require('./routes/uploadRoutes'));
 
