@@ -1,6 +1,9 @@
 import React, { useState, useContext, useEffect } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
-import { Library, User, Moon, Sun, Menu, X, LogOut, Bookmark, ShoppingBag, LayoutDashboard, Home, Info, Phone, Star, Settings } from 'lucide-react';
+import { 
+  Library, User, Moon, Sun, Menu, X, LogOut, LogIn, UserPlus,
+  Bookmark, ShoppingBag, LayoutDashboard, Home, Info, Phone, Star, Settings, ShieldAlert 
+} from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { AuthContext } from '../contexts/AuthContext';
 import NotificationCenter from './NotificationCenter';
@@ -53,27 +56,83 @@ const Header = ({ darkMode, toggleDarkMode, onOpenLogin }) => {
             </div>
           </Link>
 
-          {/* ⚙️ Minimal Action Center */}
-          <div className="flex items-center gap-3">
-            {/* Theme Toggle */}
+          {/* ⚙️ Action Center */}
+          <div className="flex items-center gap-2 sm:gap-3">
+            {/* Theme Toggle & Notifications */}
             <div className="flex items-center gap-1">
               {user && <NotificationCenter />}
               <button 
                 onClick={toggleDarkMode}
-                className="p-3 text-slate-500 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-2xl transition-all"
+                className="p-2.5 sm:p-3 text-slate-500 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-2xl transition-all"
                 title="Toggle Theme"
               >
                 {darkMode ? <Sun className="w-5 h-5" /> : <Moon className="w-5 h-5" />}
               </button>
             </div>
 
+            {/* Auth Actions: Logged In vs Logged Out */}
+            {user && user.data ? (
+              <div className="flex items-center gap-2">
+                {user.data.role === 'admin' && (
+                  <Link
+                    to="/admin"
+                    className="hidden md:flex items-center gap-1.5 px-3 py-2 bg-rose-500/10 text-rose-600 dark:text-rose-400 hover:bg-rose-500 hover:text-white rounded-2xl text-xs font-bold transition-all border border-rose-500/20"
+                  >
+                    <ShieldAlert className="w-3.5 h-3.5" />
+                    <span>Admin</span>
+                  </Link>
+                )}
+
+                <Link
+                  to="/dashboard"
+                  className="flex items-center gap-2 p-1.5 pr-3 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 rounded-2xl transition-all"
+                  title="My Dashboard"
+                >
+                  {user.data.avatar ? (
+                    <img src={user.data.avatar} alt="Profile" className="w-7 h-7 rounded-xl object-cover" />
+                  ) : (
+                    <div className="w-7 h-7 bg-indigo-600 rounded-xl flex items-center justify-center text-white font-bold text-xs">
+                      {user.data.name ? user.data.name[0].toUpperCase() : 'U'}
+                    </div>
+                  )}
+                  <span className="text-xs font-bold text-slate-800 dark:text-slate-200 max-w-[90px] truncate hidden sm:inline">
+                    {user.data.name?.split(' ')[0] || 'Account'}
+                  </span>
+                </Link>
+
+                <button
+                  onClick={handleLogout}
+                  className="p-2.5 text-slate-400 hover:text-rose-600 hover:bg-rose-500/10 rounded-2xl transition-all"
+                  title="Log Out"
+                >
+                  <LogOut className="w-4 h-4" />
+                </button>
+              </div>
+            ) : (
+              <div className="flex items-center gap-2">
+                <Link
+                  to="/login"
+                  className="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-sm rounded-2xl transition-all shadow-md shadow-indigo-600/20 flex items-center gap-1.5 active:scale-95"
+                >
+                  <LogIn className="w-4 h-4" />
+                  <span>Sign In</span>
+                </Link>
+                <Link
+                  to="/signup"
+                  className="hidden sm:flex px-4 py-2 border border-slate-200 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-200 font-bold text-sm rounded-2xl transition-all"
+                >
+                  Sign Up
+                </Link>
+              </div>
+            )}
+
             {/* Main Menu Trigger (The 'Settings' Symbol) */}
             <button 
               onClick={() => setMobileMenuOpen(true)}
-              className="p-3 bg-indigo-600/10 text-indigo-600 dark:text-indigo-400 hover:bg-indigo-600 hover:text-white rounded-2xl transition-all flex items-center gap-2 group"
+              className="p-2.5 sm:p-3 bg-indigo-600/10 text-indigo-600 dark:text-indigo-400 hover:bg-indigo-600 hover:text-white rounded-2xl transition-all flex items-center gap-2 group"
             >
               <Settings className="w-5 h-5 group-hover:rotate-90 transition-transform duration-500" />
-              <span className="hidden sm:inline font-bold text-sm tracking-tight">Navigation</span>
+              <span className="hidden xl:inline font-bold text-sm tracking-tight">Navigation</span>
             </button>
           </div>
         </div>
@@ -115,10 +174,74 @@ const Header = ({ darkMode, toggleDarkMode, onOpenLogin }) => {
                 </button>
               </div>
 
-              <div className="flex-1 p-8 space-y-12">
+              <div className="flex-1 p-8 space-y-8">
+                {/* Account Details if logged in vs Sign In if logged out */}
+                {user && user.data ? (
+                  <div className="p-6 bg-slate-50 dark:bg-slate-800/50 rounded-3xl border border-slate-100 dark:border-slate-800 space-y-4">
+                    <div className="flex items-center gap-4">
+                      {user.data.avatar ? (
+                        <img src={user.data.avatar} alt="Profile" className="w-12 h-12 rounded-2xl object-cover border border-indigo-600/20" />
+                      ) : (
+                        <div className="w-12 h-12 bg-indigo-600 rounded-2xl flex items-center justify-center text-white font-black text-xl">
+                          {user.data.name ? user.data.name[0].toUpperCase() : '?'}
+                        </div>
+                      )}
+                      <div className="overflow-hidden">
+                        <p className="font-black text-slate-900 dark:text-white leading-tight truncate">{user.data.name}</p>
+                        <p className="text-xs text-slate-500 truncate">{user.data.email}</p>
+                      </div>
+                    </div>
+                    
+                    <div className="flex items-center justify-between pt-2 border-t border-slate-200 dark:border-slate-700">
+                      <div>
+                        <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Role</p>
+                        <p className="text-indigo-500 font-black capitalize">{user.data.role || 'Member'}</p>
+                      </div>
+                      {user.data.role === 'admin' && (
+                        <Link
+                          to="/admin"
+                          onClick={closeMenu}
+                          className="px-3 py-1.5 bg-rose-500/10 text-rose-600 dark:text-rose-400 hover:bg-rose-500 hover:text-white rounded-xl text-xs font-bold transition-all border border-rose-500/20 flex items-center gap-1"
+                        >
+                          <ShieldAlert className="w-3.5 h-3.5" />
+                          Admin Portal
+                        </Link>
+                      )}
+                    </div>
+
+                    <button
+                      onClick={handleLogout}
+                      className="w-full flex items-center justify-center gap-2 p-3 bg-rose-500/10 hover:bg-rose-500 text-rose-600 hover:text-white rounded-2xl font-bold text-sm transition-all"
+                    >
+                      <LogOut className="w-4 h-4" />
+                      Sign Out
+                    </button>
+                  </div>
+                ) : (
+                  <div className="p-6 bg-slate-50 dark:bg-slate-800/50 rounded-3xl border border-slate-100 dark:border-slate-800 space-y-3">
+                    <p className="text-xs font-bold text-slate-400 uppercase tracking-widest">Account Access</p>
+                    <Link 
+                      to="/login"
+                      onClick={closeMenu}
+                      className="w-full flex items-center justify-center gap-2 p-3.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-2xl font-bold text-sm transition-all shadow-md shadow-indigo-600/20"
+                    >
+                      <LogIn className="w-4 h-4" />
+                      Sign In
+                    </Link>
+                    <Link 
+                      to="/signup"
+                      onClick={closeMenu}
+                      className="w-full flex items-center justify-center gap-2 p-3 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-2xl font-bold text-sm transition-all"
+                    >
+                      <UserPlus className="w-4 h-4" />
+                      Create Account
+                    </Link>
+                  </div>
+                )}
+
                 {/* Platform Links */}
                 <div>
-                  <h3 className="text-xs font-black text-slate-400 uppercase tracking-[0.2em] mb-6">System Access</h3>
+                  <h3 className="text-xs font-black text-slate-400 uppercase tracking-[0.2em] mb-4">System Access</h3>
                   <div className="space-y-2">
                     {mainLinks.map((link, i) => (
                       <Link 
@@ -133,28 +256,6 @@ const Header = ({ darkMode, toggleDarkMode, onOpenLogin }) => {
                     ))}
                   </div>
                 </div>
-
-                {/* Account Details if logged in */}
-                {user && user.data && (
-                  <div className="p-6 bg-slate-50 dark:bg-slate-800/50 rounded-3xl border border-slate-100 dark:border-slate-800">
-                    <div className="flex items-center gap-4 mb-4">
-                      {user.data.avatar ? (
-                        <img src={user.data.avatar} alt="Profile" className="w-12 h-12 rounded-2xl object-cover border border-indigo-600/20" />
-                      ) : (
-                        <div className="w-12 h-12 bg-indigo-600 rounded-2xl flex items-center justify-center text-white font-black text-xl">
-                          {user.data.name ? user.data.name[0] : '?'}
-                        </div>
-                      )}
-                      <div>
-                        <p className="font-black text-slate-900 dark:text-white leading-tight">{user.data.name}</p>
-                        <p className="text-xs text-slate-500">{user.data.email}</p>
-                      </div>
-                    </div>
-                    <div className="h-px bg-slate-200 dark:bg-slate-700 my-4"></div>
-                    <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Membership Status</p>
-                    <p className="text-indigo-500 font-black">Elite Tier Member</p>
-                  </div>
-                )}
               </div>
 
               <div className="p-8 border-t border-slate-100 dark:border-slate-800">

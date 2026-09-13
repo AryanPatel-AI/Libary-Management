@@ -32,7 +32,7 @@ const Signup = () => {
         toast.success('Account created successfully!');
         // Login immediately after signup
         await login(email, password);
-        navigate('/');
+        navigate('/books');
       }
     } catch (err) {
       toast.error(err.response?.data?.message || err.message || 'Signup failed');
@@ -45,7 +45,7 @@ const Signup = () => {
     try {
       await googleLogin(credentialResponse.credential);
       toast.success('Successfully signed in with Google!');
-      navigate('/');
+      navigate('/books');
     } catch (err) {
       toast.error(err.message || 'Google Signup failed');
     }

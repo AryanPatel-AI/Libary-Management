@@ -72,6 +72,7 @@ export const AuthProvider = ({ children }) => {
         localStorage.setItem('refreshToken', data.data.refreshToken);
       }
       setUser(data);
+      return data;
     } else {
       throw new Error(data.message || 'Login failed');
     }
