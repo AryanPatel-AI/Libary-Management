@@ -17,6 +17,9 @@ RUN npm install --prefix backend
 # Copy backend source
 COPY backend/ ./backend/
 
+# Generate Prisma Client
+RUN cd backend && npx prisma generate
+
 # Copy built frontend from Stage 1
 COPY --from=frontend-builder /app/frontend/dist ./frontend/dist
 
