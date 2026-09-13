@@ -122,35 +122,6 @@ const Login = () => {
           </button>
         </form>
 
-        {/* Quick Demo Accounts */}
-        <div className="mt-6 pt-5 border-t border-slate-200 dark:border-slate-800">
-          <p className="text-[11px] font-bold text-slate-400 uppercase tracking-widest text-center mb-3">
-            Quick Fill Demo Credentials
-          </p>
-          <div className="grid grid-cols-2 gap-3">
-            <button
-              type="button"
-              onClick={() => {
-                setEmail('admin@library.com');
-                setPassword('Admin@123');
-              }}
-              className="px-3 py-2.5 bg-rose-500/10 hover:bg-rose-500/20 text-rose-600 dark:text-rose-400 rounded-xl text-xs font-bold transition-all border border-rose-500/20 text-center flex items-center justify-center gap-1.5"
-            >
-              👑 Demo Admin
-            </button>
-            <button
-              type="button"
-              onClick={() => {
-                setEmail('testconnect1789282394@example.com');
-                setPassword('Password123!');
-              }}
-              className="px-3 py-2.5 bg-indigo-500/10 hover:bg-indigo-500/20 text-indigo-600 dark:text-indigo-400 rounded-xl text-xs font-bold transition-all border border-indigo-500/20 text-center flex items-center justify-center gap-1.5"
-            >
-              👤 Demo User
-            </button>
-          </div>
-        </div>
-
         <div className="mt-6">
           <div className="relative">
             <div className="absolute inset-0 flex items-center">

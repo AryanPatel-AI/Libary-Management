@@ -29,8 +29,8 @@ import Login from './pages/Login';
 import Signup from './pages/Signup';
 import ForgotPassword from './pages/ForgotPassword';
 import ResetPassword from './pages/ResetPassword';
-
 import { GoogleOAuthProvider } from '@react-oauth/google';
+import ProtectedRoute from './components/ProtectedRoute';
 
 function App() {
   const [darkMode, setDarkMode] = React.useState(() => {
@@ -111,20 +111,52 @@ function AppContent({ darkMode, toggleDarkMode }) {
         
         <main className={`flex-1 ${isLandingPage ? '' : 'container mx-auto px-4 pt-24 pb-8'}`}>
           <Routes>
+            {/* Public Pages */}
             <Route path="/" element={<LandingPage />} />
-            <Route path="/main" element={<MainPage />} />
-            <Route path="/books" element={<Home />} />
-            <Route path="/books/:id" element={<BookDetails />} />
-
-            <Route path="/dashboard" element={<UserDashboard />} />
-            <Route path="/watchlist" element={<Watchlist />} />
-            <Route path="/orders" element={<Orders />} />
-            <Route path="/verify-email" element={<VerifyEmail />} />
             <Route path="/login" element={<Login />} />
             <Route path="/signup" element={<Signup />} />
             <Route path="/forgot-password" element={<ForgotPassword />} />
             <Route path="/reset-password" element={<ResetPassword />} />
-            <Route path="/admin" element={<AdminLayout />}>
+            <Route path="/verify-email" element={<VerifyEmail />} />
+
+            {/* Protected Member Pages */}
+            <Route path="/main" element={
+              <ProtectedRoute>
+                <MainPage />
+              </ProtectedRoute>
+            } />
+            <Route path="/books" element={
+              <ProtectedRoute>
+                <Home />
+              </ProtectedRoute>
+            } />
+            <Route path="/books/:id" element={
+              <ProtectedRoute>
+                <BookDetails />
+              </ProtectedRoute>
+            } />
+            <Route path="/dashboard" element={
+              <ProtectedRoute>
+                <UserDashboard />
+              </ProtectedRoute>
+            } />
+            <Route path="/watchlist" element={
+              <ProtectedRoute>
+                <Watchlist />
+              </ProtectedRoute>
+            } />
+            <Route path="/orders" element={
+              <ProtectedRoute>
+                <Orders />
+              </ProtectedRoute>
+            } />
+
+            {/* Protected Admin Routes */}
+            <Route path="/admin" element={
+              <ProtectedRoute requiredRole="admin">
+                <AdminLayout />
+              </ProtectedRoute>
+            }>
               <Route index element={<AdminDashboard />} />
               <Route path="books" element={<BookManagement />} />
               <Route path="users" element={<UserManagement />} />
