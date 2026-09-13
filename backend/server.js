@@ -84,10 +84,13 @@ app.use(cors({
       allowedOrigins.length === 0 ||
       allowedOrigins.includes('*') ||
       allowedOrigins.includes(origin) ||
-      /^https:\/\/.*\.vercel\.app$/.test(origin)
+      /^https:\/\/.*\.vercel\.app$/.test(origin) ||
+      /^https:\/\/.*\.hf\.space$/.test(origin) ||
+      origin === 'https://huggingface.co'
     ) {
       return callback(null, true);
     }
+    console.error(`CORS Blocked: ${origin}`);
     return callback(new Error('Blocked by CORS'));
   },
   credentials: true
