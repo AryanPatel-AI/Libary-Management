@@ -1,112 +1,231 @@
 const asyncHandler = require('express-async-handler');
-const Reservation = require('../models/Reservation');
-const Book = require('../models/Book');
-const emailService = require('../utils/emailService');
+const prisma = require('../config/prisma');
+const { recordAuditLog } = require('../services/auditService');
 
-// @desc    Reserve a book
+function formatReservation(resRecord) {
+  return {
+    id: resRecord.id,
+    _id: resRecord.id, // For backward compatibility
+    book: resRecord.book ? {
+      id: resRecord.book.id,
+      _id: resRecord.book.id,
+      title: resRecord.book.title,
+      isbn: resRecord.book.isbn13,
+      coverImageUrl: resRecord.book.coverImageUrl,
+      image: resRecord.book.coverImageUrl
+    } : null,
+    user: resRecord.member && resRecord.member.user ? {
+      _id: resRecord.member.user.id,
+      name: `${resRecord.member.user.firstName} ${resRecord.member.user.lastName}`.trim(),
+      email: resRecord.member.user.email,
+      memberNumber: resRecord.member.memberNumber
+    } : null,
+    member: resRecord.member,
+    branch: resRecord.pickupBranch ? {
+      id: resRecord.pickupBranch.id,
+      name: resRecord.pickupBranch.name
+    } : null,
+    allocatedCopy: resRecord.allocatedCopy ? {
+      barcode: resRecord.allocatedCopy.barcode,
+      shelf: resRecord.allocatedCopy.shelf ? resRecord.allocatedCopy.shelf.shelfCode : null
+    } : null,
+    queuePosition: resRecord.queuePosition,
+    status: resRecord.status.toLowerCase(),
+    reservedAt: resRecord.reservedAt,
+    readyUntil: resRecord.readyUntil,
+    fulfilledAt: resRecord.fulfilledAt,
+    createdAt: resRecord.createdAt
+  };
+}
+
+// @desc    Reserve a book / Place on hold
 // @route   POST /api/reservations
-// @access  Private
+// @access  Private (Member)
 const reserveBook = asyncHandler(async (req, res) => {
-  const { bookId } = req.body;
+  const { bookId, branchId } = req.body;
 
-  if (!bookId || !require('mongoose').Types.ObjectId.isValid(bookId)) {
+  if (!bookId) {
     res.status(400);
-    throw new Error('Invalid book ID');
+    throw new Error('Book ID is required');
   }
 
-  const book = await Book.findById(bookId);
+  // Find member record for current user
+  let member = await prisma.member.findUnique({
+    where: { userId: req.user.id }
+  });
+
+  if (!member) {
+    res.status(400);
+    throw new Error('Member profile not found. Please register as a library patron.');
+  }
+
+  const book = await prisma.book.findUnique({
+    where: { id: bookId },
+    include: { copies: true }
+  });
 
   if (!book) {
     res.status(404);
     throw new Error('Book not found');
   }
 
-  // Check if book actually has copies available. 
-  // If it does, they should issue it unless it's already "locked" for someone else.
-  if (book.availableCopies > 0) {
-    // Check if there are notified reservations (book is locked for them)
-    const notifiedReservations = await Reservation.countDocuments({
-      book: bookId,
-      status: 'notified'
+  // Check if any copies are AVAILABLE right now
+  const availableCopies = book.copies.filter((c) => c.status === 'AVAILABLE');
+  if (availableCopies.length > 0) {
+    // Only block if there is no pending hold queue
+    const pendingHolds = await prisma.reservation.count({
+      where: { bookId, status: { in: ['PENDING', 'READY_FOR_PICKUP'] } }
     });
-
-    if (book.availableCopies > notifiedReservations) {
+    if (availableCopies.length > pendingHolds) {
       res.status(400);
-      throw new Error('Book is currently available, you can issue it directly.');
+      throw new Error('Copies of this book are currently available on shelf. You can borrow directly!');
     }
   }
 
-  // Check if user already has an active reservation (waiting or notified)
-  const existingReservation = await Reservation.findOne({
-    user: req.user._id,
-    book: bookId,
-    status: { $in: ['waiting', 'notified'] }
+  // Check if member already has an active reservation for this book
+  const existingReservation = await prisma.reservation.findFirst({
+    where: {
+      bookId,
+      memberId: member.id,
+      status: { in: ['PENDING', 'READY_FOR_PICKUP'] }
+    }
   });
 
   if (existingReservation) {
     res.status(400);
-    throw new Error(`You already have a ${existingReservation.status} reservation for this book.`);
+    throw new Error(`You already have an active hold on this book (Position #${existingReservation.queuePosition}).`);
   }
 
-  // Calculate position (count existing 'waiting' reservations)
-  const waitingCount = await Reservation.countDocuments({
-    book: bookId,
-    status: 'waiting'
+  // Count existing pending holds to determine queue position
+  const currentQueueLength = await prisma.reservation.count({
+    where: { bookId, status: 'PENDING' }
   });
 
-  const reservation = await Reservation.create({
-    user: req.user._id,
-    book: bookId,
-    status: 'waiting',
-    position: waitingCount + 1
+  const pickupBranchId = branchId || member.homeBranchId;
+
+  const reservation = await prisma.reservation.create({
+    data: {
+      bookId,
+      memberId: member.id,
+      pickupBranchId,
+      queuePosition: currentQueueLength + 1,
+      status: 'PENDING'
+    },
+    include: {
+      book: true,
+      member: { include: { user: true } },
+      pickupBranch: true
+    }
   });
 
-  // Dispatch Email Notification
-  try {
-    await emailService.sendReservationConfirmation(req.user.email, req.user.name, book.title);
-  } catch (emailError) {
-    console.error('Failed to send reservation confirmation email:', emailError);
-  }
+  await recordAuditLog({
+    actorId: req.user.id,
+    actorEmail: req.user.email,
+    entityType: 'RESERVATION',
+    entityId: reservation.id,
+    action: 'RESERVATION_PLACED',
+    afterState: { bookTitle: book.title, queuePosition: reservation.queuePosition },
+    ipAddress: req.ip,
+    userAgent: req.headers['user-agent']
+  });
 
   res.status(201).json({
     success: true,
-    data: reservation
+    message: `Reservation placed successfully! You are #${reservation.queuePosition} in the waitlist.`,
+    data: formatReservation(reservation)
   });
 });
 
-// @desc    Cancel a reservation
+// @desc    Cancel a reservation & re-index queue
 // @route   DELETE /api/reservations/:id
-// @access  Private
+// @access  Private (Owner or Staff)
 const cancelReservation = asyncHandler(async (req, res) => {
-  const reservation = await Reservation.findById(req.params.id);
+  const { id } = req.params;
+
+  const reservation = await prisma.reservation.findUnique({
+    where: { id },
+    include: { member: true }
+  });
 
   if (!reservation) {
     res.status(404);
     throw new Error('Reservation not found');
   }
 
-  // Verify owner
-  if (reservation.user.toString() !== req.user._id.toString()) {
+  const isOwner = req.user.member && req.user.member.id === reservation.memberId;
+  const isStaff = req.user.roles.includes('SUPER_ADMIN') || req.user.roles.includes('LIBRARIAN') || req.user.roles.includes('CIRCULATION_STAFF');
+
+  if (!isOwner && !isStaff) {
     res.status(403);
     throw new Error('Not authorized to cancel this reservation');
   }
 
-  const wasWaiting = reservation.status === 'waiting';
-  const wasNotified = reservation.status === 'notified';
-  const bookId = reservation.book;
-
-  reservation.status = 'cancelled';
-  await reservation.save();
-
-  const { updateWaitlistPositions, processNextReservation } = require('../utils/reservationUtils');
-
-  if (wasWaiting) {
-    // Re-calculate positions for others
-    await updateWaitlistPositions(bookId);
-  } else if (wasNotified) {
-    // If it was notified (locked), we need to trigger the next person
-    await processNextReservation(bookId);
+  if (reservation.status !== 'PENDING' && reservation.status !== 'READY_FOR_PICKUP') {
+    res.status(400);
+    throw new Error(`Cannot cancel a reservation with status '${reservation.status}'`);
   }
+
+  await prisma.$transaction(async (tx) => {
+    // If a copy was already allocated, return it to AVAILABLE or next member
+    if (reservation.allocatedCopyId) {
+      const nextHold = await tx.reservation.findFirst({
+        where: {
+          bookId: reservation.bookId,
+          status: 'PENDING',
+          id: { not: reservation.id }
+        },
+        orderBy: { queuePosition: 'asc' }
+      });
+
+      if (nextHold) {
+        await tx.reservation.update({
+          where: { id: nextHold.id },
+          data: {
+            allocatedCopyId: reservation.allocatedCopyId,
+            status: 'READY_FOR_PICKUP',
+            readyUntil: new Date(Date.now() + 48 * 60 * 60 * 1000)
+          }
+        });
+      } else {
+        await tx.bookCopy.update({
+          where: { id: reservation.allocatedCopyId },
+          data: { status: 'AVAILABLE', version: { increment: 1 } }
+        });
+      }
+    }
+
+    // Mark cancelled
+    await tx.reservation.update({
+      where: { id },
+      data: {
+        status: 'CANCELLED',
+        cancelledAt: new Date(),
+        allocatedCopyId: null
+      }
+    });
+
+    // Re-index remaining pending reservations
+    await tx.reservation.updateMany({
+      where: {
+        bookId: reservation.bookId,
+        status: 'PENDING',
+        queuePosition: { gt: reservation.queuePosition }
+      },
+      data: {
+        queuePosition: { decrement: 1 }
+      }
+    });
+  });
+
+  await recordAuditLog({
+    actorId: req.user.id,
+    actorEmail: req.user.email,
+    entityType: 'RESERVATION',
+    entityId: id,
+    action: 'RESERVATION_CANCELLED',
+    ipAddress: req.ip,
+    userAgent: req.headers['user-agent']
+  });
 
   res.json({
     success: true,
@@ -114,51 +233,79 @@ const cancelReservation = asyncHandler(async (req, res) => {
   });
 });
 
-// @desc    Get user's reservations
-// @route   GET /api/reservations/my
-// @access  Private
+// @desc    Get user reservations
+// @route   GET /api/reservations/my-reservations
+// @access  Private (Member)
 const getMyReservations = asyncHandler(async (req, res) => {
-  const reservations = await Reservation.find({ user: req.user._id })
-    .populate('book', 'title author image')
-    .sort({ createdAt: -1 });
+  const member = await prisma.member.findUnique({
+    where: { userId: req.user.id }
+  });
+
+  if (!member) {
+    return res.json({ success: true, data: [] });
+  }
+
+  const reservations = await prisma.reservation.findMany({
+    where: { memberId: member.id },
+    include: {
+      book: true,
+      pickupBranch: true,
+      allocatedCopy: { include: { shelf: true } }
+    },
+    orderBy: { createdAt: 'desc' }
+  });
 
   res.json({
     success: true,
-    data: reservations
+    data: reservations.map(formatReservation)
   });
 });
 
-// @desc    Get all reservations (admin)
+// @desc    Get all reservations with filters
 // @route   GET /api/reservations
-// @access  Admin
+// @access  Private (Staff/Admin)
 const getAllReservations = asyncHandler(async (req, res) => {
-  const page = parseInt(req.query.page) || 1;
-  const limit = parseInt(req.query.limit) || 20;
-  const skip = (page - 1) * limit;
+  const { status, bookId, page = 1, limit = 20 } = req.query;
 
-  let query = {};
+  const pageNum = Math.max(1, parseInt(page));
+  const limitNum = Math.max(1, Math.min(100, parseInt(limit)));
+  const skip = (pageNum - 1) * limitNum;
 
-  if (req.query.status) {
-    query.status = req.query.status;
-  }
+  const where = {};
+  if (status) where.status = status.toUpperCase();
+  if (bookId) where.bookId = bookId;
 
-  const total = await Reservation.countDocuments(query);
-  const reservations = await Reservation.find(query)
-    .populate('user', 'name email')
-    .populate('book', 'title author image')
-    .sort({ createdAt: -1 })
-    .skip(skip)
-    .limit(limit);
+  const [total, reservations] = await Promise.all([
+    prisma.reservation.count({ where }),
+    prisma.reservation.findMany({
+      where,
+      skip,
+      take: limitNum,
+      include: {
+        book: true,
+        member: { include: { user: true } },
+        pickupBranch: true,
+        allocatedCopy: { include: { shelf: true } }
+      },
+      orderBy: [{ status: 'asc' }, { queuePosition: 'asc' }]
+    })
+  ]);
 
   res.json({
     success: true,
-    data: {
-      reservations,
-      page,
-      pages: Math.ceil(total / limit),
-      total
+    data: reservations.map(formatReservation),
+    pagination: {
+      page: pageNum,
+      limit: limitNum,
+      total,
+      pages: Math.ceil(total / limitNum)
     }
   });
 });
 
-module.exports = { reserveBook, cancelReservation, getMyReservations, getAllReservations };
+module.exports = {
+  reserveBook,
+  cancelReservation,
+  getMyReservations,
+  getAllReservations
+};

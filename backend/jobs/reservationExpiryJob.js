@@ -1,52 +1,85 @@
 const cron = require('node-cron');
-const Reservation = require('../models/Reservation');
-const Book = require('../models/Book');
-const { processNextReservation } = require('../utils/reservationUtils');
+const prisma = require('../config/prisma');
 
 /**
- * Job to check for expired reservations (where status is 'notified' but user didn't claim)
- * Runs every hour
+ * Checks for expired holds (status: READY_FOR_PICKUP and readyUntil < now)
+ * Automatically advances to the next reservation in queue or sets copy to AVAILABLE.
  */
 const startReservationExpiryCheck = () => {
   cron.schedule('0 * * * *', async () => {
-    console.log('[Cron] Running reservation expiry check...');
+    console.log('⏰ [Cron] Running reservation hold expiry check...');
 
     try {
       const now = new Date();
 
-      // 1. Find all 'notified' reservations that have expired
-      const expiredReservations = await Reservation.find({
-        status: 'notified',
-        expiresAt: { $lt: now }
+      const expiredHolds = await prisma.reservation.findMany({
+        where: {
+          status: 'READY_FOR_PICKUP',
+          readyUntil: { lt: now }
+        },
+        include: {
+          allocatedCopy: true,
+          book: true
+        }
       });
 
-      console.log(`[Cron] Found ${expiredReservations.length} expired reservations.`);
+      if (expiredHolds.length === 0) return;
 
-      for (const reservation of expiredReservations) {
-        try {
-          // 2. Mark as expired
-          reservation.status = 'expired';
-          await reservation.save();
+      console.log(`[Cron] Found ${expiredHolds.length} expired hold(s) to process.`);
 
-          console.log(`[Cron] Reservation ${reservation._id} for book ${reservation.book} expired.`);
+      for (const hold of expiredHolds) {
+        await prisma.$transaction(async (tx) => {
+          // 1. Mark this hold expired
+          await tx.reservation.update({
+            where: { id: hold.id },
+            data: {
+              status: 'EXPIRED',
+              allocatedCopyId: null
+            }
+          });
 
-          // 3. Try to notify the next person in line
-          const processedNext = await processNextReservation(reservation.book);
+          // 2. Check for next pending member
+          const nextMemberHold = await tx.reservation.findFirst({
+            where: {
+              bookId: hold.bookId,
+              status: 'PENDING'
+            },
+            orderBy: { queuePosition: 'asc' },
+            include: { member: { include: { user: true } } }
+          });
 
-          // 4. If NO ONE else is waiting, increment the book's available copies
-          if (!processedNext) {
-            await Book.updateOne(
-              { _id: reservation.book },
-              { $inc: { availableCopies: 1 } }
-            );
-            console.log(`[Cron] No more reservations for book ${reservation.book}. incremented availableCopies.`);
+          if (nextMemberHold && hold.allocatedCopyId) {
+            const nextReadyUntil = new Date(Date.now() + 48 * 60 * 60 * 1000);
+            await tx.reservation.update({
+              where: { id: nextMemberHold.id },
+              data: {
+                allocatedCopyId: hold.allocatedCopyId,
+                status: 'READY_FOR_PICKUP',
+                readyUntil: nextReadyUntil
+              }
+            });
+
+            await tx.notification.create({
+              data: {
+                userId: nextMemberHold.member.userId,
+                title: '📖 Book Ready for Pickup!',
+                message: `The reserved book '${hold.book.title}' is now available for you! Please pick it up within 48 hours.`,
+                channel: 'IN_APP',
+                eventType: 'RESERVATION_READY',
+                payload: { bookId: hold.bookId, readyUntil: nextReadyUntil }
+              }
+            });
+          } else if (hold.allocatedCopyId) {
+            // No one waiting, return copy to AVAILABLE
+            await tx.bookCopy.update({
+              where: { id: hold.allocatedCopyId },
+              data: { status: 'AVAILABLE', version: { increment: 1 } }
+            });
           }
-        } catch (innerError) {
-          console.error(`[Cron Error] Failed to process expired reservation ${reservation._id}:`, innerError);
-        }
+        });
       }
     } catch (error) {
-      console.error('[Cron Error] Reservation Expiry Job failed:', error);
+      console.error('⚠️ [Cron Error] Failed reservation expiry check:', error.message);
     }
   });
 };

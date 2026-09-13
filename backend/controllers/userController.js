@@ -1,45 +1,89 @@
 const asyncHandler = require('express-async-handler');
-const User = require('../models/User');
-const Transaction = require('../models/Transaction');
+const prisma = require('../config/prisma');
+const { recordAuditLog } = require('../services/auditService');
 
-// Helper to escape regex special characters
-const escapeRegex = (s) => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+function formatUser(user) {
+  const roles = user.userRoles ? user.userRoles.map((ur) => ur.role.name) : [];
+  let primaryRole = 'user';
+  if (roles.includes('SUPER_ADMIN')) primaryRole = 'admin';
+  else if (roles.includes('LIBRARIAN')) primaryRole = 'librarian';
+  else if (roles.includes('CIRCULATION_STAFF')) primaryRole = 'staff';
+  else if (roles.includes('MEMBER')) primaryRole = 'user';
 
-// @desc    Get all users (with pagination and search)
+  const member = user.memberProfile;
+
+  return {
+    _id: user.id,
+    id: user.id,
+    name: `${user.firstName} ${user.lastName}`.trim(),
+    firstName: user.firstName,
+    lastName: user.lastName,
+    email: user.email,
+    phone: user.phone || '',
+    role: primaryRole,
+    roles,
+    status: user.status,
+    member: member ? {
+      id: member.id,
+      memberNumber: member.memberNumber,
+      memberType: member.memberType ? member.memberType.name : 'STUDENT',
+      homeBranch: member.homeBranch ? member.homeBranch.name : '',
+      expiresAt: member.expiresAt,
+      totalFinesDue: (member.totalFinesDueCents / 100).toFixed(2),
+      totalFinesDueCents: member.totalFinesDueCents
+    } : null,
+    createdAt: user.createdAt
+  };
+}
+
+// @desc    Get all users with search, pagination & role filter
 // @route   GET /api/users
-// @access  Admin
+// @access  Private (Admin/Staff)
 const getUsers = asyncHandler(async (req, res) => {
-  const page = parseInt(req.query.page) || 1;
-  const limit = parseInt(req.query.limit) || 10;
+  const page = Math.max(1, parseInt(req.query.page) || 1);
+  const limit = Math.min(100, Math.max(1, parseInt(req.query.limit) || 10));
   const skip = (page - 1) * limit;
 
-  let query = {};
+  const { search, role } = req.query;
 
-  // Search by name or email
-  if (req.query.search && req.query.search.trim()) {
-    const escaped = escapeRegex(req.query.search.trim());
-    query.$or = [
-      { name: { $regex: escaped, $options: 'i' } },
-      { email: { $regex: escaped, $options: 'i' } }
+  const where = {};
+  if (search && search.trim()) {
+    where.OR = [
+      { firstName: { contains: search.trim(), mode: 'insensitive' } },
+      { lastName: { contains: search.trim(), mode: 'insensitive' } },
+      { email: { contains: search.trim(), mode: 'insensitive' } },
+      { memberProfile: { memberNumber: { contains: search.trim(), mode: 'insensitive' } } }
     ];
   }
 
-  // Filter by role
-  if (req.query.role) {
-    query.role = req.query.role;
+  if (role) {
+    let targetRole = role.toUpperCase();
+    if (role === 'admin') targetRole = 'SUPER_ADMIN';
+    else if (role === 'user') targetRole = 'MEMBER';
+
+    where.userRoles = {
+      some: { role: { name: targetRole } }
+    };
   }
 
-  const total = await User.countDocuments(query);
-  const users = await User.find(query)
-    .select('-password')
-    .sort({ createdAt: -1 })
-    .skip(skip)
-    .limit(limit);
+  const [total, users] = await Promise.all([
+    prisma.user.count({ where }),
+    prisma.user.findMany({
+      where,
+      skip,
+      take: limit,
+      include: {
+        userRoles: { include: { role: true } },
+        memberProfile: { include: { memberType: true, homeBranch: true } }
+      },
+      orderBy: { createdAt: 'desc' }
+    })
+  ]);
 
   res.json({
     success: true,
     data: {
-      users,
+      users: users.map(formatUser),
       page,
       pages: Math.ceil(total / limit),
       total
@@ -47,120 +91,139 @@ const getUsers = asyncHandler(async (req, res) => {
   });
 });
 
-// @desc    Get single user by ID (with their active transactions)
+// @desc    Get single user with active transactions and profile
 // @route   GET /api/users/:id
-// @access  Admin
+// @access  Private (Admin/Staff)
 const getUserById = asyncHandler(async (req, res) => {
-  const user = await User.findById(req.params.id).select('-password');
+  const user = await prisma.user.findUnique({
+    where: { id: req.params.id },
+    include: {
+      userRoles: { include: { role: true } },
+      memberProfile: {
+        include: {
+          memberType: true,
+          homeBranch: true,
+          loans: {
+            where: { status: 'ACTIVE' },
+            include: { copy: { include: { book: true } } }
+          },
+          fines: {
+            where: { status: { in: ['UNPAID', 'PARTIALLY_PAID'] } }
+          }
+        }
+      }
+    }
+  });
 
   if (!user) {
     res.status(404);
     throw new Error('User not found');
   }
-
-  // Get user's active transactions
-  const activeTransactions = await Transaction.find({
-    user: req.params.id,
-    status: 'issued'
-  }).populate('book', 'title author isbn');
 
   res.json({
     success: true,
-    data: {
-      user,
-      activeTransactions,
-      activeBookCount: activeTransactions.length
-    }
+    data: formatUser(user)
   });
 });
 
-// @desc    Update user (role, details)
-// @route   PUT /api/users/:id
-// @access  Admin
-const updateUser = asyncHandler(async (req, res) => {
-  const user = await User.findById(req.params.id);
+// @desc    Update user role & permissions
+// @route   PUT /api/users/:id/role
+// @access  Private (Admin)
+const updateUserRole = asyncHandler(async (req, res) => {
+  const { role } = req.body;
 
-  if (!user) {
-    res.status(404);
-    throw new Error('User not found');
-  }
-
-  // Prevent admin from demoting themselves
-  if (req.user._id.toString() === req.params.id && req.body.role && req.body.role !== 'admin') {
+  if (!role) {
     res.status(400);
-    throw new Error('Cannot change your own admin role');
+    throw new Error('Role is required');
   }
 
-  // Update allowed fields
-  user.name = req.body.name || user.name;
-  user.phone = req.body.phone || user.phone;
+  let targetRoleName = role.toUpperCase();
+  if (role === 'admin') targetRoleName = 'SUPER_ADMIN';
+  else if (role === 'user') targetRoleName = 'MEMBER';
+  else if (role === 'librarian') targetRoleName = 'LIBRARIAN';
+  else if (role === 'staff') targetRoleName = 'CIRCULATION_STAFF';
 
-  if (req.body.role) {
-    user.role = req.body.role;
+  const roleRecord = await prisma.role.findUnique({ where: { name: targetRoleName } });
+  if (!roleRecord) {
+    res.status(404);
+    throw new Error(`Role ${targetRoleName} does not exist`);
   }
 
-  if (req.body.email && req.body.email !== user.email) {
-    const emailTaken = await User.findOne({ email: req.body.email });
-    if (emailTaken) {
-      res.status(400);
-      throw new Error('Email is already in use');
-    }
-    user.email = req.body.email;
-  }
-
-  try {
-    user.$locals.userId = req.user._id;
-    const updatedUser = await user.save();
-
-    res.json({
-      success: true,
-      data: {
-        _id: updatedUser._id,
-        name: updatedUser.name,
-        email: updatedUser.email,
-        phone: updatedUser.phone,
-        role: updatedUser.role,
-        membershipDate: updatedUser.membershipDate
-      }
+  await prisma.$transaction(async (tx) => {
+    // Remove existing roles
+    await tx.userRole.deleteMany({ where: { userId: req.params.id } });
+    // Assign new role
+    await tx.userRole.create({
+      data: { userId: req.params.id, roleId: roleRecord.id }
     });
-  } catch (error) {
-    if (error.code === 11000) {
-      res.status(400);
-      throw new Error('Email is already in use');
-    }
-    throw error;
-  }
-});
-
-// @desc    Delete a user
-// @route   DELETE /api/users/:id
-// @access  Admin
-const deleteUser = asyncHandler(async (req, res) => {
-  const user = await User.findById(req.params.id);
-
-  if (!user) {
-    res.status(404);
-    throw new Error('User not found');
-  }
-
-  // Prevent self-deletion
-  if (req.user._id.toString() === req.params.id) {
-    res.status(400);
-    throw new Error('Cannot delete your own account');
-  }
-
-  // Check for active book issues
-  const activeIssues = await Transaction.countDocuments({
-    user: req.params.id,
-    status: 'issued'
   });
 
-  if (activeIssues > 0) {
+  await recordAuditLog({
+    actorId: req.user.id,
+    actorEmail: req.user.email,
+    entityType: 'USER',
+    entityId: req.params.id,
+    action: 'USER_ROLE_UPDATED',
+    afterState: { role: targetRoleName },
+    ipAddress: req.ip,
+    userAgent: req.headers['user-agent']
+  });
+
+  res.json({
+    success: true,
+    message: `User role updated to ${targetRoleName}`
+  });
+});
+
+// @desc    Update user account status (e.g. SUSPENDED, ACTIVE)
+// @route   PUT /api/users/:id/status
+// @access  Private (Admin)
+const updateUserStatus = asyncHandler(async (req, res) => {
+  const { status } = req.body;
+
+  const validStatuses = ['ACTIVE', 'SUSPENDED', 'DEACTIVATED'];
+  if (!validStatuses.includes(status)) {
     res.status(400);
-    throw new Error(`Cannot delete user. They have ${activeIssues} active book(s) issued.`);
+    throw new Error(`Invalid status. Must be one of: ${validStatuses.join(', ')}`);
   }
 
-  await User.findByIdAndDelete(req.params.id, { userId: req.user._id });
+  const updatedUser = await prisma.user.update({
+    where: { id: req.params.id },
+    data: { status }
+  });
+
+  await recordAuditLog({
+    actorId: req.user.id,
+    actorEmail: req.user.email,
+    entityType: 'USER',
+    entityId: req.params.id,
+    action: 'USER_STATUS_UPDATED',
+    afterState: { status },
+    ipAddress: req.ip,
+    userAgent: req.headers['user-agent']
+  });
+
+  res.json({
+    success: true,
+    message: `User account is now ${status}`
+  });
+});
+
+// @desc    Delete user
+// @route   DELETE /api/users/:id
+// @access  Private (Admin)
+const deleteUser = asyncHandler(async (req, res) => {
+  // Check if member has active loans
+  const activeLoan = await prisma.loan.findFirst({
+    where: { member: { userId: req.params.id }, status: 'ACTIVE' }
+  });
+
+  if (activeLoan) {
+    res.status(400);
+    throw new Error('Cannot delete user with active borrowed books');
+  }
+
+  await prisma.user.delete({ where: { id: req.params.id } });
 
   res.json({
     success: true,
@@ -168,4 +231,10 @@ const deleteUser = asyncHandler(async (req, res) => {
   });
 });
 
-module.exports = { getUsers, getUserById, updateUser, deleteUser };
+module.exports = {
+  getUsers,
+  getUserById,
+  updateUserRole,
+  updateUserStatus,
+  deleteUser
+};

@@ -1,31 +1,67 @@
 version: '3.8'
 
 services:
-  mongodb:
-    image: mongo:latest
+  postgres:
+    image: postgres:16-alpine
+    container_name: lms_postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${DB_NAME:-library_lms}
+      POSTGRES_USER: ${DB_USER:-lms_admin}
+      POSTGRES_PASSWORD: ${DB_PASSWORD:-supersecret}
     ports:
-      - "27017:27017"
+      - "5432:5432"
     volumes:
-      - mongodb_data:/data/db
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${DB_USER:-lms_admin} -d ${DB_NAME:-library_lms}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  redis:
+    image: redis:7-alpine
+    container_name: lms_redis
+    restart: unless-stopped
+    command: redis-server --appendonly yes
+    ports:
+      - "6379:6379"
+    volumes:
+      - redisdata:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
 
   backend:
     build: ./backend
+    container_name: lms_backend
+    restart: unless-stopped
     ports:
       - "5001:5001"
     environment:
       - PORT=5001
-      - MONGO_URI=mongodb://mongodb:27017/library_management
-      - JWT_SECRET=${JWT_SECRET}
+      - DATABASE_URL=postgresql://${DB_USER:-lms_admin}:${DB_PASSWORD:-supersecret}@postgres:5432/${DB_NAME:-library_lms}?schema=public
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+      - JWT_SECRET=${JWT_SECRET:-enterprise_secret_key_change_in_production_32_chars}
       - NODE_ENV=production
     depends_on:
-      - mongodb
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
 
   frontend:
     build: ./frontend
+    container_name: lms_frontend
+    restart: unless-stopped
     ports:
       - "3000:80"
     depends_on:
       - backend
 
 volumes:
-  mongodb_data:
+  pgdata:
+  redisdata:

@@ -1,207 +1,208 @@
 const asyncHandler = require('express-async-handler');
-const Transaction = require('../models/Transaction');
-const Book = require('../models/Book');
-const User = require('../models/User');
-const Fine = require('../models/Fine');
+const prisma = require('../config/prisma');
 
 // @desc    Get dashboard statistics
 // @route   GET /api/analytics/dashboard
-// @access  Admin
+// @access  Admin/Staff
 const getDashboardStats = asyncHandler(async (req, res) => {
   const [
     totalBooks,
-    totalUsers,
-    totalTransactions,
+    totalCopies,
+    totalAvailableCopies,
+    totalMembers,
+    totalLoans,
     activeIssues,
     overdueCount,
-    totalFinesUnpaid
+    unpaidFinesAgg,
+    branchesCount
   ] = await Promise.all([
-    Book.countDocuments(),
-    User.countDocuments(),
-    Transaction.countDocuments(),
-    Transaction.countDocuments({ status: 'issued' }),
-    Transaction.countDocuments({
-      status: 'issued',
-      dueDate: { $lt: new Date() }
+    prisma.book.count(),
+    prisma.bookCopy.count(),
+    prisma.bookCopy.count({ where: { status: 'AVAILABLE' } }),
+    prisma.member.count(),
+    prisma.loan.count(),
+    prisma.loan.count({ where: { status: 'ACTIVE' } }),
+    prisma.loan.count({ where: { status: 'ACTIVE', dueAt: { lt: new Date() } } }),
+    prisma.fine.aggregate({
+      where: { status: { in: ['UNPAID', 'PARTIALLY_PAID'] } },
+      _sum: { balanceCents: true }
     }),
-    Fine.aggregate([
-      { $match: { paid: false } },
-      { $group: { _id: null, total: { $sum: '$amount' } } }
-    ])
+    prisma.branch.count({ where: { isActive: true } })
   ]);
 
-  // Calculate total available books
-  const availableBooks = await Book.aggregate([
-    { $group: { _id: null, total: { $sum: '$availableCopies' } } }
-  ]);
+  const totalUnpaidCents = unpaidFinesAgg._sum.balanceCents || 0;
 
   res.json({
     success: true,
     data: {
       totalBooks,
-      totalUsers,
-      totalTransactions,
+      totalCopies,
+      totalAvailableCopies,
+      totalUsers: totalMembers,
+      totalTransactions: totalLoans,
       activeIssues,
       overdueBooks: overdueCount,
-      totalAvailableCopies: availableBooks.length > 0 ? availableBooks[0].total : 0,
-      totalUnpaidFines: totalFinesUnpaid.length > 0 ? totalFinesUnpaid[0].total : 0
+      totalUnpaidFines: totalUnpaidCents / 100,
+      branchesCount
     }
   });
 });
 
 // @desc    Get most borrowed books
 // @route   GET /api/analytics/popular-books
-// @access  Admin
+// @access  Admin/Staff
 const getMostBorrowedBooks = asyncHandler(async (req, res) => {
-  let limit = Number.parseInt(req.query.limit, 10);
-  if (!Number.isFinite(limit) || limit < 1) {
-    limit = 10;
-  } else if (limit > 100) {
-    limit = 100;
-  }
+  const limit = Math.min(20, Math.max(1, parseInt(req.query.limit) || 10));
 
-  const popularBooks = await Transaction.aggregate([
-    {
-      $group: {
-        _id: '$book',
-        borrowCount: { $sum: 1 }
-      }
-    },
-    { $sort: { borrowCount: -1 } },
-    { $limit: limit },
-    {
-      $lookup: {
-        from: 'books',
-        localField: '_id',
-        foreignField: '_id',
-        as: 'bookDetails'
-      }
-    },
-    { $unwind: '$bookDetails' },
-    {
-      $project: {
-        _id: 0,
-        bookId: '$_id',
-        title: '$bookDetails.title',
-        author: '$bookDetails.author',
-        category: '$bookDetails.category',
-        isbn: '$bookDetails.isbn',
-        borrowCount: 1
+  const books = await prisma.book.findMany({
+    take: limit,
+    include: {
+      authors: { include: { author: true } },
+      copies: {
+        include: {
+          _count: { select: { loans: true } }
+        }
       }
     }
-  ]);
-
-  res.json({
-    success: true,
-    data: popularBooks
   });
-});
 
-// @desc    Get all overdue books
-// @route   GET /api/analytics/overdue
-// @access  Admin
-const getOverdueBooks = asyncHandler(async (req, res) => {
-  const overdueTransactions = await Transaction.find({
-    status: 'issued',
-    dueDate: { $lt: new Date() }
-  })
-    .populate('book', 'title author isbn')
-    .populate('user', 'name email phone')
-    .sort({ dueDate: 1 });
-
-  // Calculate days overdue for each
-  const now = new Date();
-  const overdueData = overdueTransactions.map((t) => {
-    const diffTime = now.getTime() - new Date(t.dueDate).getTime();
-    const daysOverdue = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-    const estimatedFine = daysOverdue * (parseInt(process.env.FINE_PER_DAY) || 5);
-
+  const popular = books.map((b) => {
+    const borrowCount = b.copies.reduce((sum, c) => sum + c._count.loans, 0);
     return {
-      transactionId: t._id,
-      book: t.book,
-      user: t.user,
-      issueDate: t.issueDate,
-      dueDate: t.dueDate,
-      daysOverdue,
-      estimatedFine
+      _id: b.id,
+      id: b.id,
+      title: b.title,
+      author: b.authors.map(a => a.author.name).join(', ') || 'Unknown',
+      borrowCount,
+      count: borrowCount,
+      image: b.coverImageUrl
     };
-  });
+  }).sort((a, b) => b.borrowCount - a.borrowCount);
 
   res.json({
     success: true,
-    data: {
-      count: overdueData.length,
-      overdueBooks: overdueData
-    }
+    data: popular
   });
 });
 
-// @desc    Get monthly report (issues per month)
-// @route   GET /api/analytics/monthly-report
-// @access  Admin
-const getMonthlyReport = asyncHandler(async (req, res) => {
-  const yearParam = req.query.year;
-  if (!/^\d{4}$/.test(yearParam)) {
-    return res.status(400).json({ success: false, message: 'Invalid year format. Must be a 4-digit year.' });
-  }
-  const year = Number(yearParam);
-  if (!Number.isInteger(year) || year < 1970 || year > new Date().getFullYear()) {
-    return res.status(400).json({ success: false, message: 'Year must be between 1970 and current year.' });
+// @desc    Get borrowing trends for charts
+// @route   GET /api/analytics/borrowing-trends
+// @access  Admin/Staff
+const getBorrowingTrends = asyncHandler(async (req, res) => {
+  const days = [];
+  for (let i = 6; i >= 0; i--) {
+    const d = new Date();
+    d.setDate(d.getDate() - i);
+    d.setHours(0, 0, 0, 0);
+    const nextD = new Date(d);
+    nextD.setDate(nextD.getDate() + 1);
+
+    const dayName = d.toLocaleDateString('en-US', { weekday: 'short' });
+
+    const [issues, returns] = await Promise.all([
+      prisma.loan.count({
+        where: {
+          issuedAt: { gte: d, lt: nextD }
+        }
+      }),
+      prisma.loan.count({
+        where: {
+          returnedAt: { gte: d, lt: nextD }
+        }
+      })
+    ]);
+
+    days.push({
+      date: dayName,
+      fullDate: d.toISOString().split('T')[0],
+      borrowed: issues,
+      returned: returns,
+      issues
+    });
   }
 
-  const monthlyData = await Transaction.aggregate([
-    {
-      $match: {
-        issueDate: {
-          $gte: new Date(`${year}-01-01`),
-          $lte: new Date(`${year}-12-31T23:59:59`)
+  res.json({
+    success: true,
+    data: days
+  });
+});
+
+// @desc    Get overdue loans report
+// @route   GET /api/analytics/overdue
+// @access  Admin/Staff
+const getOverdueBooks = asyncHandler(async (req, res) => {
+  const overdueLoans = await prisma.loan.findMany({
+    where: {
+      status: 'ACTIVE',
+      dueAt: { lt: new Date() }
+    },
+    include: {
+      copy: {
+        include: {
+          book: true,
+          branch: true,
+          shelf: true
+        }
+      },
+      member: {
+        include: {
+          user: true,
+          memberType: true
         }
       }
     },
-    {
-      $group: {
-        _id: { month: { $month: '$issueDate' } },
-        totalIssues: { $sum: 1 },
-        totalReturns: {
-          $sum: { $cond: [{ $eq: ['$status', 'returned'] }, 1, 0] }
-        },
-        totalFines: { $sum: '$fine' }
-      }
-    },
-    { $sort: { '_id.month': 1 } },
-    {
-      $project: {
-        _id: 0,
-        month: '$_id.month',
-        totalIssues: 1,
-        totalReturns: 1,
-        totalFines: 1
-      }
-    }
-  ]);
+    orderBy: { dueAt: 'asc' }
+  });
 
-  // Fill in missing months with zeros
-  const months = [
-    'January', 'February', 'March', 'April', 'May', 'June',
-    'July', 'August', 'September', 'October', 'November', 'December'
-  ];
-
-  const fullReport = months.map((name, index) => {
-    const found = monthlyData.find((m) => m.month === index + 1);
+  const formatted = overdueLoans.map((loan) => {
+    const daysOverdue = Math.ceil((new Date() - new Date(loan.dueAt)) / (1000 * 60 * 60 * 24));
     return {
-      month: index + 1,
-      monthName: name,
-      totalIssues: found ? found.totalIssues : 0,
-      totalReturns: found ? found.totalReturns : 0,
-      totalFines: found ? found.totalFines : 0
+      id: loan.id,
+      _id: loan.id,
+      bookTitle: loan.copy.book.title,
+      barcode: loan.copy.barcode,
+      memberName: `${loan.member.user.firstName} ${loan.member.user.lastName}`.trim(),
+      memberEmail: loan.member.user.email,
+      memberNumber: loan.member.memberNumber,
+      issuedAt: loan.issuedAt,
+      dueAt: loan.dueAt,
+      dueDate: loan.dueAt,
+      daysOverdue,
+      estimatedFine: (daysOverdue * (loan.member.memberType ? loan.member.memberType.finePerDayCents : 100)) / 100
     };
   });
 
   res.json({
     success: true,
+    data: formatted
+  });
+});
+
+// @desc    Get monthly circulation report
+// @route   GET /api/analytics/monthly-report
+// @access  Admin/Staff
+const getMonthlyReport = asyncHandler(async (req, res) => {
+  const now = new Date();
+  const firstDay = new Date(now.getFullYear(), now.getMonth(), 1);
+
+  const [issuedThisMonth, returnedThisMonth, newMembersThisMonth, finesCollectedAgg] = await Promise.all([
+    prisma.loan.count({ where: { issuedAt: { gte: firstDay } } }),
+    prisma.loan.count({ where: { returnedAt: { gte: firstDay } } }),
+    prisma.member.count({ where: { joinedAt: { gte: firstDay } } }),
+    prisma.finePayment.aggregate({
+      where: { createdAt: { gte: firstDay } },
+      _sum: { amountCents: true }
+    })
+  ]);
+
+  res.json({
+    success: true,
     data: {
-      year,
-      report: fullReport
+      month: now.toLocaleString('en-US', { month: 'long', year: 'numeric' }),
+      issuedThisMonth,
+      returnedThisMonth,
+      newMembersThisMonth,
+      finesCollected: (finesCollectedAgg._sum.amountCents || 0) / 100
     }
   });
 });
@@ -209,6 +210,7 @@ const getMonthlyReport = asyncHandler(async (req, res) => {
 module.exports = {
   getDashboardStats,
   getMostBorrowedBooks,
+  getBorrowingTrends,
   getOverdueBooks,
   getMonthlyReport
 };

@@ -1,14 +1,19 @@
 const express = require('express');
 const router = express.Router();
-const { getMyFines, getAllFines, payFine } = require('../controllers/fineController');
-const { protect, admin } = require('../middleware/authMiddleware');
-const { mongoIdValidation } = require('../middleware/validateRequest');
+const {
+  getMyFines,
+  getFines,
+  payFine,
+  waiveFine
+} = require('../controllers/fineController');
+const { protect, staffOrAdmin, admin } = require('../middleware/authMiddleware');
 
-// User route (protected)
 router.get('/my-fines', protect, getMyFines);
 
-// Admin routes
-router.get('/', protect, admin, getAllFines);
-router.put('/:id/pay', protect, admin, mongoIdValidation, payFine);
+router.route('/')
+  .get(protect, staffOrAdmin, getFines);
+
+router.post('/:id/pay', protect, payFine);
+router.post('/:id/waive', protect, admin, waiveFine);
 
 module.exports = router;

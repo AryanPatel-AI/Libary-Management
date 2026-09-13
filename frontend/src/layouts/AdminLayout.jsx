@@ -1,6 +1,6 @@
 import React from 'react';
 import { NavLink, Outlet } from 'react-router-dom';
-import { LayoutDashboard, Users, BookMarked, Settings, LogOut, History, ArrowLeftRight, Clock, DollarSign } from 'lucide-react';
+import { LayoutDashboard, Users, BookMarked, Settings, LogOut, History, ArrowLeftRight, Clock, DollarSign, Scan } from 'lucide-react';
 import { motion } from 'framer-motion';
 
 const AdminLayout = () => {
@@ -20,6 +20,7 @@ const AdminLayout = () => {
         <nav className="flex-1 p-4 space-y-2">
           {[
             { to: "/admin", icon: LayoutDashboard, label: "Dashboard", end: true },
+            { to: "/admin/circulation", icon: Scan, label: "Circulation Desk" },
             { to: "/admin/books", icon: BookMarked, label: "Manage Books" },
             { to: "/admin/users", icon: Users, label: "User Management" },
             { to: "/admin/transactions", icon: ArrowLeftRight, label: "Transactions" },

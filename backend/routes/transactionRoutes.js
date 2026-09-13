@@ -3,22 +3,32 @@ const router = express.Router();
 const {
   issueBook,
   returnBook,
+  renewBook,
+  getTransactions,
   getMyTransactions,
-  getAllTransactions,
-  getTransactionById,
-  buyBook
+  getTransactionStats
 } = require('../controllers/transactionController');
-const { protect, admin, adminOrLibrarian } = require('../middleware/authMiddleware');
-const { issueBookValidation, mongoIdValidation } = require('../middleware/validateRequest');
+const { protect, staffOrAdmin } = require('../middleware/authMiddleware');
 
-// User routes (protected)
-router.post('/issue', protect, issueBookValidation, issueBook);
-router.post('/buy', protect, issueBookValidation, buyBook);
-router.put('/return/:id', protect, mongoIdValidation, returnBook);
+// Circulation Actions
+router.post('/issue', protect, staffOrAdmin, issueBook);
+router.post('/checkout', protect, staffOrAdmin, issueBook);
+
+router.post('/return', protect, staffOrAdmin, returnBook);
+router.post('/checkin', protect, staffOrAdmin, returnBook);
+router.put('/return/:id', protect, staffOrAdmin, (req, res, next) => {
+  req.body.transactionId = req.params.id;
+  return returnBook(req, res, next);
+});
+
+router.post('/:id/renew', protect, renewBook);
+
+// Member Self-Service Queries
 router.get('/my-books', protect, getMyTransactions);
+router.get('/my-transactions', protect, getMyTransactions);
 
-// Admin/Librarian routes
-router.get('/', protect, adminOrLibrarian, getAllTransactions);
-router.get('/:id', protect, adminOrLibrarian, mongoIdValidation, getTransactionById);
+// Staff / Admin Circulation Queries
+router.get('/stats', protect, staffOrAdmin, getTransactionStats);
+router.get('/', protect, staffOrAdmin, getTransactions);
 
 module.exports = router;

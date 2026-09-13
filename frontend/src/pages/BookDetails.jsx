@@ -3,7 +3,7 @@ import API_URL from '../api/config';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import axios from 'axios';
 import { motion } from 'framer-motion';
-import { ArrowLeft, BookOpen, Loader2, Calendar, User, Tag, Info, CheckCircle2, XCircle, Bookmark } from 'lucide-react';
+import { ArrowLeft, BookOpen, Loader2, Calendar, User, Tag, Info, CheckCircle2, XCircle, Bookmark, Building2 } from 'lucide-react';
 import { toast } from 'react-toastify';
 import { AuthContext } from '../contexts/AuthContext';
 import PdfViewer from '../components/PdfViewer';
@@ -286,6 +286,38 @@ const BookDetails = () => {
             <p className="text-slate-600 dark:text-slate-300 leading-relaxed">
               {book.description || 'No description available for this book.'}
             </p>
+
+            {book.branchAvailability && Object.keys(book.branchAvailability).length > 0 && (
+              <div className="mt-6 p-5 rounded-2xl bg-slate-50 dark:bg-slate-900/60 border border-slate-200 dark:border-slate-700">
+                <h4 className="text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400 mb-3 flex items-center gap-1.5">
+                  <Building2 className="w-4 h-4 text-emerald-500" />
+                  Physical Inventory by Branch
+                </h4>
+                <div className="space-y-2.5">
+                  {Object.entries(book.branchAvailability).map(([branchName, info]) => (
+                    <div key={branchName} className="p-3 bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 flex flex-wrap items-center justify-between gap-2">
+                      <div>
+                        <span className="font-bold text-slate-800 dark:text-white text-sm">{branchName}</span>
+                        <p className="text-xs text-slate-500 mt-0.5">
+                          {info.available} of {info.total} copies available on shelf
+                        </p>
+                      </div>
+                      <div className="flex flex-wrap gap-1.5">
+                        {info.copies.map(c => (
+                          <span key={c.barcode} className={`px-2.5 py-1 text-xs font-mono rounded-lg border ${
+                            c.status === 'AVAILABLE' 
+                              ? 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/20' 
+                              : 'bg-slate-100 dark:bg-slate-700/50 text-slate-500 border-slate-200 dark:border-slate-700'
+                          }`}>
+                            Shelf {c.shelf} ({c.status})
+                          </span>
+                        ))}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
           </div>
 
           <div className="mt-auto border-t border-slate-200 dark:border-slate-700 pt-8 flex flex-col sm:flex-row gap-4">

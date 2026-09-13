@@ -1,163 +1,335 @@
 const asyncHandler = require('express-async-handler');
-const Fine = require('../models/Fine');
+const prisma = require('../config/prisma');
+const { recordAuditLog } = require('../services/auditService');
+
+function formatFine(fine) {
+  return {
+    id: fine.id,
+    _id: fine.id, // For backward compatibility
+    amount: fine.amountCents / 100,
+    amountCents: fine.amountCents,
+    balance: fine.balanceCents / 100,
+    balanceCents: fine.balanceCents,
+    paid: fine.status === 'PAID',
+    status: fine.status.toLowerCase(),
+    reason: fine.reason,
+    notes: fine.notes || '',
+    assessedAt: fine.assessedAt,
+    user: fine.member && fine.member.user ? {
+      _id: fine.member.user.id,
+      name: `${fine.member.user.firstName} ${fine.member.user.lastName}`.trim(),
+      email: fine.member.user.email,
+      memberNumber: fine.member.memberNumber
+    } : null,
+    member: fine.member,
+    transaction: fine.loan ? {
+      _id: fine.loan.id,
+      id: fine.loan.id,
+      book: fine.loan.copy && fine.loan.copy.book ? {
+        title: fine.loan.copy.book.title,
+        author: fine.loan.copy.book.authors ? fine.loan.copy.book.authors.map(a => a.author.name).join(', ') : '',
+        isbn: fine.loan.copy.book.isbn13
+      } : null,
+      copy: fine.loan.copy ? { barcode: fine.loan.copy.barcode } : null,
+      dueDate: fine.loan.dueAt,
+      returnDate: fine.loan.returnedAt
+    } : null,
+    payments: fine.payments || [],
+    createdAt: fine.createdAt
+  };
+}
 
 // @desc    Get logged-in user's fines
 // @route   GET /api/fines/my-fines
-// @access  Private
+// @access  Private (Member)
 const getMyFines = asyncHandler(async (req, res) => {
-  const DEFAULT_LIMIT = 10;
-  const MAX_LIMIT = 100;
+  const member = await prisma.member.findUnique({
+    where: { userId: req.user.id }
+  });
 
-  let page = Number.parseInt(req.query.page, 10);
-  if (!Number.isFinite(page) || page < 1) {
-    page = 1;
+  if (!member) {
+    return res.json({
+      success: true,
+      data: { fines: [], totalUnpaidAmount: 0, page: 1, pages: 1, total: 0 }
+    });
   }
 
-  let limit = Number.parseInt(req.query.limit, 10);
-  if (!Number.isFinite(limit) || limit <= 0) {
-    limit = DEFAULT_LIMIT;
-  } else if (limit > MAX_LIMIT) {
-    limit = MAX_LIMIT;
-  }
+  const fines = await prisma.fine.findMany({
+    where: { memberId: member.id },
+    include: {
+      loan: {
+        include: {
+          copy: {
+            include: {
+              book: { include: { authors: { include: { author: true } } } }
+            }
+          }
+        }
+      },
+      payments: true
+    },
+    orderBy: { createdAt: 'desc' }
+  });
 
-  const skip = (page - 1) * limit;
-
-  let query = { user: req.user._id };
-
-  // Filter by paid status
-  if (req.query.paid !== undefined) {
-    query.paid = req.query.paid === 'true';
-  }
-
-  const total = await Fine.countDocuments(query);
-  const fines = await Fine.find(query)
-    .populate({
-      path: 'transaction',
-      populate: {
-        path: 'book',
-        select: 'title author isbn'
-      }
-    })
-    .sort({ createdAt: -1 })
-    .skip(skip)
-    .limit(limit);
-
-  // Calculate total unpaid amount
-  const totalUnpaid = await Fine.aggregate([
-    { $match: { user: req.user._id, paid: false } },
-    { $group: { _id: null, total: { $sum: '$amount' } } }
-  ]);
+  const totalUnpaidCents = fines
+    .filter((f) => f.status === 'UNPAID' || f.status === 'PARTIALLY_PAID')
+    .reduce((acc, f) => acc + f.balanceCents, 0);
 
   res.json({
     success: true,
     data: {
-      fines,
-      totalUnpaidAmount: totalUnpaid.length > 0 ? totalUnpaid[0].total : 0,
-      page,
-      pages: Math.ceil(total / limit),
-      total
+      fines: fines.map(formatFine),
+      totalUnpaidAmount: totalUnpaidCents / 100,
+      page: 1,
+      pages: 1,
+      total: fines.length
     }
   });
 });
 
-// @desc    Get all fines (admin)
+// @desc    Get all fines with filters (Admin/Staff)
 // @route   GET /api/fines
-// @access  Admin
-const getAllFines = asyncHandler(async (req, res) => {
-  const DEFAULT_LIMIT = 20;
-  const MAX_LIMIT = 100;
+// @access  Private (Staff/Admin)
+const getFines = asyncHandler(async (req, res) => {
+  const { status, paid, search, page = 1, limit = 20 } = req.query;
 
-  let page = Number.parseInt(req.query.page, 10);
-  if (!Number.isFinite(page) || page < 1) {
-    page = 1;
+  const pageNum = Math.max(1, parseInt(page));
+  const limitNum = Math.max(1, Math.min(100, parseInt(limit)));
+  const skip = (pageNum - 1) * limitNum;
+
+  const where = {};
+  if (status) where.status = status.toUpperCase();
+  if (paid !== undefined) {
+    where.status = paid === 'true' ? 'PAID' : { in: ['UNPAID', 'PARTIALLY_PAID'] };
   }
 
-  let limit = Number.parseInt(req.query.limit, 10);
-  if (!Number.isFinite(limit) || limit <= 0) {
-    limit = DEFAULT_LIMIT;
-  } else if (limit > MAX_LIMIT) {
-    limit = MAX_LIMIT;
+  if (search) {
+    where.member = {
+      OR: [
+        { memberNumber: { contains: search, mode: 'insensitive' } },
+        { user: { firstName: { contains: search, mode: 'insensitive' } } },
+        { user: { lastName: { contains: search, mode: 'insensitive' } } },
+        { user: { email: { contains: search, mode: 'insensitive' } } }
+      ]
+    };
   }
 
-  const skip = (page - 1) * limit;
-
-  let query = {};
-
-  // Filter by paid status
-  if (req.query.paid !== undefined) {
-    query.paid = req.query.paid === 'true';
-  }
-
-  // Filter by user
-  if (req.query.userId) {
-    query.user = req.query.userId;
-  }
-
-  const total = await Fine.countDocuments(query);
-  const fines = await Fine.find(query)
-    .populate('user', 'name email')
-    .populate({
-      path: 'transaction',
-      populate: {
-        path: 'book',
-        select: 'title author isbn'
-      }
+  const [total, fines] = await Promise.all([
+    prisma.fine.count({ where }),
+    prisma.fine.findMany({
+      where,
+      skip,
+      take: limitNum,
+      include: {
+        member: { include: { user: true, memberType: true } },
+        loan: {
+          include: {
+            copy: {
+              include: {
+                book: { include: { authors: { include: { author: true } } } }
+              }
+            }
+          }
+        },
+        payments: true
+      },
+      orderBy: { createdAt: 'desc' }
     })
-    .sort({ createdAt: -1 })
-    .skip(skip)
-    .limit(limit);
-
-  // Calculate total unpaid amount across all users
-  const totalUnpaid = await Fine.aggregate([
-    { $match: { paid: false } },
-    { $group: { _id: null, total: { $sum: '$amount' } } }
   ]);
 
   res.json({
     success: true,
-    data: {
-      fines,
-      totalUnpaidAmount: totalUnpaid.length > 0 ? totalUnpaid[0].total : 0,
-      page,
-      pages: Math.ceil(total / limit),
-      total
+    data: fines.map(formatFine),
+    pagination: {
+      page: pageNum,
+      limit: limitNum,
+      total,
+      pages: Math.ceil(total / limitNum)
     }
   });
 });
 
-// @desc    Mark a fine as paid
-// @route   PUT /api/fines/:id/pay
-// @access  Admin
+// @desc    Collect fine payment (Full or Partial)
+// @route   POST /api/fines/:id/pay
+// @access  Private (Staff or Member Self-Pay)
 const payFine = asyncHandler(async (req, res) => {
-  const fine = await Fine.findById(req.params.id)
-    .populate('user', 'name email')
-    .populate({
-      path: 'transaction',
-      populate: {
-        path: 'book',
-        select: 'title author'
+  const { id } = req.params;
+  const { amount, paymentMethod = 'CASH', transactionReference, notes } = req.body;
+
+  const fine = await prisma.fine.findUnique({
+    where: { id },
+    include: { member: true }
+  });
+
+  if (!fine) {
+    res.status(404);
+    throw new Error('Fine record not found');
+  }
+
+  if (fine.status === 'PAID' || fine.status === 'WAIVED') {
+    res.status(400);
+    throw new Error(`Fine is already ${fine.status.toLowerCase()}`);
+  }
+
+  // Calculate payment amount in cents
+  const paymentCents = amount ? Math.round(parseFloat(amount) * 100) : fine.balanceCents;
+
+  if (paymentCents <= 0) {
+    res.status(400);
+    throw new Error('Payment amount must be greater than zero');
+  }
+
+  if (paymentCents > fine.balanceCents) {
+    res.status(400);
+    throw new Error(`Payment ($${(paymentCents / 100).toFixed(2)}) exceeds remaining fine balance ($${(fine.balanceCents / 100).toFixed(2)})`);
+  }
+
+  const updatedFine = await prisma.$transaction(async (tx) => {
+    const newBalance = fine.balanceCents - paymentCents;
+    const newStatus = newBalance === 0 ? 'PAID' : 'PARTIALLY_PAID';
+
+    // 1. Record payment transaction
+    await tx.finePayment.create({
+      data: {
+        fineId: fine.id,
+        processedByUserId: req.user.id,
+        amountCents: paymentCents,
+        paymentMethod: paymentMethod.toUpperCase(),
+        transactionReference: transactionReference || null,
+        notes: notes || null
       }
     });
+
+    // 2. Update fine balance & status
+    const updated = await tx.fine.update({
+      where: { id: fine.id },
+      data: {
+        balanceCents: newBalance,
+        status: newStatus,
+        resolvedAt: newStatus === 'PAID' ? new Date() : null
+      },
+      include: {
+        member: { include: { user: true } },
+        loan: { include: { copy: { include: { book: true } } } },
+        payments: true
+      }
+    });
+
+    // 3. Decrement member total fine balance
+    await tx.member.update({
+      where: { id: fine.memberId },
+      data: { totalFinesDueCents: { decrement: paymentCents } }
+    });
+
+    return updated;
+  });
+
+  await recordAuditLog({
+    actorId: req.user.id,
+    actorEmail: req.user.email,
+    entityType: 'FINE',
+    entityId: fine.id,
+    action: 'FINE_PAYMENT_COLLECTED',
+    afterState: { paymentCents, newBalanceCents: updatedFine.balanceCents, status: updatedFine.status },
+    ipAddress: req.ip,
+    userAgent: req.headers['user-agent']
+  });
+
+  res.json({
+    success: true,
+    message: `Payment of $${(paymentCents / 100).toFixed(2)} recorded successfully`,
+    data: formatFine(updatedFine)
+  });
+});
+
+// @desc    Waive a fine with justification
+// @route   POST /api/fines/:id/waive
+// @access  Private (Admin/Librarian)
+const waiveFine = asyncHandler(async (req, res) => {
+  const { id } = req.params;
+  const { reason } = req.body;
+
+  if (!reason || reason.trim().length < 5) {
+    res.status(400);
+    throw new Error('A detailed justification reason is required to waive fines');
+  }
+
+  const fine = await prisma.fine.findUnique({
+    where: { id },
+    include: { member: true }
+  });
 
   if (!fine) {
     res.status(404);
     throw new Error('Fine not found');
   }
 
-  if (fine.paid) {
+  if (fine.status === 'PAID' || fine.status === 'WAIVED') {
     res.status(400);
-    throw new Error('This fine has already been paid');
+    throw new Error(`Fine is already ${fine.status.toLowerCase()}`);
   }
 
-  fine.paid = true;
-  fine.paidDate = new Date();
-  await fine.save();
+  const waivedAmount = fine.balanceCents;
+
+  const updatedFine = await prisma.$transaction(async (tx) => {
+    // 1. Record waiver payment
+    await tx.finePayment.create({
+      data: {
+        fineId: fine.id,
+        processedByUserId: req.user.id,
+        amountCents: waivedAmount,
+        paymentMethod: 'WAIVER',
+        notes: `Waived by ${req.user.firstName} ${req.user.lastName}: ${reason.trim()}`
+      }
+    });
+
+    // 2. Set balance to 0 and status WAIVED
+    const updated = await tx.fine.update({
+      where: { id: fine.id },
+      data: {
+        balanceCents: 0,
+        status: 'WAIVED',
+        resolvedAt: new Date(),
+        notes: `${fine.notes ? fine.notes + ' | ' : ''}WAIVER REASON: ${reason.trim()}`
+      },
+      include: {
+        member: { include: { user: true } },
+        loan: { include: { copy: { include: { book: true } } } },
+        payments: true
+      }
+    });
+
+    // 3. Decrement member total fine
+    await tx.member.update({
+      where: { id: fine.memberId },
+      data: { totalFinesDueCents: { decrement: waivedAmount } }
+    });
+
+    return updated;
+  });
+
+  await recordAuditLog({
+    actorId: req.user.id,
+    actorEmail: req.user.email,
+    entityType: 'FINE',
+    entityId: fine.id,
+    action: 'FINE_WAIVED',
+    beforeState: { balanceCents: waivedAmount },
+    afterState: { status: 'WAIVED', reason: reason.trim() },
+    ipAddress: req.ip,
+    userAgent: req.headers['user-agent']
+  });
 
   res.json({
     success: true,
-    message: `Fine of ₹${fine.amount} marked as paid`,
-    data: fine
+    message: `Fine of $${(waivedAmount / 100).toFixed(2)} waived successfully`,
+    data: formatFine(updatedFine)
   });
 });
 
-module.exports = { getMyFines, getAllFines, payFine };
+module.exports = {
+  getMyFines,
+  getFines,
+  payFine,
+  waiveFine
+};

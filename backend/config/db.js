@@ -1,46 +1,25 @@
 const mongoose = require('mongoose');
-
-let listenersRegistered = false;
+const prisma = require('./prisma');
 
 const connectDB = async () => {
-  if (!process.env.MONGO_URI) {
-    console.error('\n' + '!'.repeat(60));
-    console.error('❌ CRITICAL ERROR: MONGO_URI is not defined.');
-    console.error('Please add your MongoDB connection string to your environment variables.');
-    console.error('On Hugging Face: Go to Settings > Secrets and add MONGO_URI.');
-    console.error('!'.repeat(60) + '\n');
-    process.exit(1);
+  // 1. Verify PostgreSQL Primary Database Connection
+  try {
+    await prisma.$queryRaw`SELECT 1`;
+    console.log('✅ PostgreSQL (Enterprise LMS Database) Connected successfully');
+  } catch (pgError) {
+    console.error('❌ PostgreSQL Connection Failed:', pgError.message);
   }
 
-  try {
-    const conn = await mongoose.connect(process.env.MONGO_URI);
-    console.log(`✅ MongoDB Connected: ${conn.connection.host}`);
-
-    if (!listenersRegistered) {
-      mongoose.connection.on('error', (err) => {
-        console.error(`❌ MongoDB connection error: ${err.message}`);
+  // 2. Optional MongoDB connection if MONGO_URI is defined
+  if (process.env.MONGO_URI) {
+    try {
+      const conn = await mongoose.connect(process.env.MONGO_URI, {
+        serverSelectionTimeoutMS: 5000
       });
-
-      mongoose.connection.on('disconnected', () => {
-        console.warn('⚠️  MongoDB disconnected');
-      });
-
-      process.on('SIGINT', async () => {
-        try {
-          await mongoose.connection.close();
-          console.log('MongoDB connection closed due to app termination');
-          process.exit(0);
-        } catch (error) {
-          console.error(`❌ Error closing MongoDB connection: ${error.message}`);
-          process.exit(1);
-        }
-      });
-
-      listenersRegistered = true;
+      console.log(`✅ MongoDB Connected (Legacy Store): ${conn.connection.host}`);
+    } catch (mongoError) {
+      console.warn(`⚠️ MongoDB Connection warning: ${mongoError.message}. Operating on PostgreSQL.`);
     }
-  } catch (error) {
-    console.error(`❌ MongoDB Connection Error: ${error.message}`);
-    process.exit(1);
   }
 };
 

@@ -114,6 +114,7 @@ if (process.env.NODE_ENV !== 'test') {
 app.use('/api/auth', authRoutes);
 app.use('/api/books', bookRoutes);
 app.use('/api/transactions', transactionRoutes);
+app.use('/api/circulation', transactionRoutes);
 app.use('/api/users', userRoutes);
 app.use('/api/reservations', reservationRoutes);
 app.use('/api/reviews', require('./routes/reviewRoutes'));
@@ -122,6 +123,10 @@ app.use('/api/ai', require('./routes/aiRoutes'));
 app.use('/api/fines', fineRoutes);
 app.use('/api/analytics', analyticsRoutes);
 app.use('/api/notifications', notificationRoutes);
+app.use('/api/copies', require('./routes/copyRoutes'));
+app.use('/api/branches', require('./routes/branchRoutes'));
+app.use('/api/inventory', require('./routes/inventoryRoutes'));
+app.get('/api/audit-logs', require('./middleware/authMiddleware').protect, require('./middleware/authMiddleware').admin, require('./controllers/logController').getAuditLogs);
 app.use('/api/upload', require('./routes/uploadRoutes'));
 
 // Serve Uploads Folder

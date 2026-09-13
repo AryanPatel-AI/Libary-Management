@@ -1,0 +1,590 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum UserStatus {
+  PENDING_VERIFICATION
+  ACTIVE
+  SUSPENDED
+  DEACTIVATED
+}
+
+enum MemberStatus {
+  ACTIVE
+  EXPIRED
+  BARRED
+  INACTIVE
+}
+
+enum CopyStatus {
+  AVAILABLE
+  ON_LOAN
+  RESERVED
+  IN_TRANSIT
+  LOST
+  DAMAGED
+  MAINTENANCE
+  WITHDRAWN
+}
+
+enum CopyCondition {
+  NEW
+  EXCELLENT
+  GOOD
+  FAIR
+  POOR
+  DAMAGED
+}
+
+enum LoanStatus {
+  ACTIVE
+  RETURNED
+  OVERDUE
+  CLAIMED_RETURNED
+  LOST
+}
+
+enum ReservationStatus {
+  PENDING
+  READY_FOR_PICKUP
+  FULFILLED
+  CANCELLED
+  EXPIRED
+}
+
+enum FineStatus {
+  UNPAID
+  PARTIALLY_PAID
+  PAID
+  WAIVED
+}
+
+enum FineReason {
+  OVERDUE
+  DAMAGED
+  LOST
+  MANUAL_FEE
+}
+
+enum PaymentMethod {
+  CASH
+  CARD_STRIPE
+  UPI
+  BANK_TRANSFER
+  WAIVER
+}
+
+enum InventorySessionStatus {
+  IN_PROGRESS
+  COMPLETED
+  CANCELLED
+  RECONCILED
+}
+
+enum InventoryItemStatus {
+  MATCH
+  MISPLACED
+  MISSING
+  UNEXPECTED
+}
+
+// -----------------------------------------------------------------------------
+// 1. AUTH & RBAC
+// -----------------------------------------------------------------------------
+model User {
+  id                String       @id @default(uuid())
+  email             String       @unique
+  passwordHash      String
+  firstName         String
+  lastName          String
+  phone             String?
+  avatarUrl         String?
+  status            UserStatus   @default(ACTIVE)
+  emailVerifiedAt   DateTime?
+  lastLoginAt       DateTime?
+  createdAt         DateTime     @default(now())
+  updatedAt         DateTime     @updatedAt
+
+  userRoles         UserRole[]
+  memberProfile     Member?
+  issuedLoans       Loan[]       @relation("IssuedLoans")
+  returnedLoans     Loan[]       @relation("ReturnedLoans")
+  assessedFines     Fine[]       @relation("AssessedFines")
+  processedPayments FinePayment[] @relation("ProcessedPayments")
+  startedSessions   InventorySession[] @relation("StartedInventorySessions")
+  scannedItems      InventoryItem[] @relation("ScannedInventoryItems")
+  auditLogs         AuditLog[]
+  notifications     Notification[]
+
+  @@map("users")
+}
+
+model Role {
+  id           String           @id @default(uuid())
+  name         String           @unique
+  description  String?
+  isSystemRole Boolean          @default(false)
+  createdAt    DateTime         @default(now())
+
+  userRoles    UserRole[]
+  permissions  RolePermission[]
+
+  @@map("roles")
+}
+
+model Permission {
+  id          String           @id @default(uuid())
+  code        String           @unique
+  category    String
+  description String?
+
+  rolePermissions RolePermission[]
+
+  @@map("permissions")
+}
+
+model RolePermission {
+  roleId       String
+  permissionId String
+
+  role         Role       @relation(fields: [roleId], references: [id], onDelete: Cascade)
+  permission   Permission @relation(fields: [permissionId], references: [id], onDelete: Cascade)
+
+  @@id([roleId, permissionId])
+  @@map("role_permissions")
+}
+
+model UserRole {
+  userId     String
+  roleId     String
+  assignedAt DateTime @default(now())
+
+  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  role       Role     @relation(fields: [roleId], references: [id], onDelete: Cascade)
+
+  @@id([userId, roleId])
+  @@map("user_roles")
+}
+
+// -----------------------------------------------------------------------------
+// 2. BRANCHES, LOCATIONS & SHELVES
+// -----------------------------------------------------------------------------
+model Branch {
+  id        String   @id @default(uuid())
+  code      String   @unique
+  name      String
+  address   String
+  city      String
+  state     String?
+  phone     String?
+  email     String?
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  shelves            LocationShelf[]
+  copies             BookCopy[]
+  homeMembers        Member[]
+  policies           CirculationPolicy[]
+  pickupReservations Reservation[]
+  inventorySessions  InventorySession[]
+
+  @@map("branches")
+}
+
+model LocationShelf {
+  id        String   @id @default(uuid())
+  branchId  String
+  floor     String
+  room      String?
+  aisle     String?
+  shelfCode String
+  capacity  Int      @default(50)
+  createdAt DateTime @default(now())
+
+  branch        Branch          @relation(fields: [branchId], references: [id], onDelete: Cascade)
+  copies        BookCopy[]
+  scannedItems  InventoryItem[] @relation("ScannedShelf")
+  expectedItems InventoryItem[] @relation("ExpectedShelf")
+
+  @@unique([branchId, floor, shelfCode])
+  @@map("locations_shelves")
+}
+
+// -----------------------------------------------------------------------------
+// 3. MEMBERS & POLICIES
+// -----------------------------------------------------------------------------
+model MemberType {
+  id                       String   @id @default(uuid())
+  name                     String   @unique
+  maxBorrowLimit           Int      @default(5)
+  defaultLoanPeriodDays    Int      @default(14)
+  finePerDayCents          Int      @default(100)
+  maxFineCapCents          Int      @default(5000)
+  maxRenewals              Int      @default(2)
+  gracePeriodDays          Int      @default(1)
+  membershipDurationDays   Int      @default(365)
+  createdAt                DateTime @default(now())
+
+  members  Member[]
+  policies CirculationPolicy[]
+
+  @@map("member_types")
+}
+
+model Member {
+  id                 String       @id @default(uuid())
+  userId             String       @unique
+  memberNumber       String       @unique
+  memberTypeId       String
+  homeBranchId       String
+  status             MemberStatus @default(ACTIVE)
+  joinedAt           DateTime     @default(now())
+  expiresAt          DateTime
+  totalFinesDueCents Int          @default(0)
+  notes              String?
+  createdAt          DateTime     @default(now())
+  updatedAt          DateTime     @updatedAt
+
+  user         User         @relation(fields: [userId], references: [id], onDelete: Restrict)
+  memberType   MemberType   @relation(fields: [memberTypeId], references: [id], onDelete: Restrict)
+  homeBranch   Branch       @relation(fields: [homeBranchId], references: [id], onDelete: Restrict)
+  loans        Loan[]
+  reservations Reservation[]
+  fines        Fine[]
+
+  @@map("members")
+}
+
+model CirculationPolicy {
+  id              String   @id @default(uuid())
+  branchId        String?
+  memberTypeId    String
+  loanPeriodDays  Int
+  maxLoans        Int
+  finePerDayCents Int
+  maxFineCents    Int
+  maxRenewals     Int
+  gracePeriodDays Int      @default(0)
+  isActive        Boolean  @default(true)
+
+  branch     Branch?    @relation(fields: [branchId], references: [id], onDelete: Cascade)
+  memberType MemberType @relation(fields: [memberTypeId], references: [id], onDelete: Cascade)
+
+  @@unique([branchId, memberTypeId])
+  @@map("circulation_policies")
+}
+
+// -----------------------------------------------------------------------------
+// 4. BIBLIOGRAPHIC CATALOG
+// -----------------------------------------------------------------------------
+model Publisher {
+  id           String   @id @default(uuid())
+  name         String   @unique
+  website      String?
+  contactEmail String?
+  createdAt    DateTime @default(now())
+
+  books Book[]
+
+  @@map("publishers")
+}
+
+model Author {
+  id        String   @id @default(uuid())
+  name      String
+  biography String?
+  photoUrl  String?
+  createdAt DateTime @default(now())
+
+  books BookAuthor[]
+
+  @@map("authors")
+}
+
+model Category {
+  id          String   @id @default(uuid())
+  name        String
+  slug        String   @unique
+  parentId    String?
+  description String?
+  createdAt   DateTime @default(now())
+
+  parent        Category?      @relation("CategoryHierarchy", fields: [parentId], references: [id], onDelete: SetNull)
+  subcategories Category[]     @relation("CategoryHierarchy")
+  books         BookCategory[]
+
+  @@map("categories")
+}
+
+model Book {
+  id              String   @id @default(uuid())
+  isbn10          String?  @unique
+  isbn13          String   @unique
+  title           String
+  subtitle        String?
+  description     String?
+  language        String   @default("English")
+  edition         String?
+  publicationYear Int?
+  publisherId     String?
+  pages           Int?
+  coverImageUrl   String?
+  digitalPdfUrl   String?
+  isPaid          Boolean  @default(false)
+  priceCents      Int      @default(0)
+  rating          Float    @default(0)
+  numReviews      Int      @default(0)
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  publisher    Publisher?     @relation(fields: [publisherId], references: [id], onDelete: SetNull)
+  authors      BookAuthor[]
+  categories   BookCategory[]
+  copies       BookCopy[]
+  reservations Reservation[]
+
+  @@map("books")
+}
+
+model BookAuthor {
+  bookId      String
+  authorId    String
+  authorOrder Int    @default(1)
+
+  book   Book   @relation(fields: [bookId], references: [id], onDelete: Cascade)
+  author Author @relation(fields: [authorId], references: [id], onDelete: Restrict)
+
+  @@id([bookId, authorId])
+  @@map("book_authors")
+}
+
+model BookCategory {
+  bookId     String
+  categoryId String
+
+  book     Book     @relation(fields: [bookId], references: [id], onDelete: Cascade)
+  category Category @relation(fields: [categoryId], references: [id], onDelete: Restrict)
+
+  @@id([bookId, categoryId])
+  @@map("book_categories")
+}
+
+// -----------------------------------------------------------------------------
+// 5. PHYSICAL BOOK COPIES INVENTORY
+// -----------------------------------------------------------------------------
+model BookCopy {
+  id              String        @id @default(uuid())
+  bookId          String
+  barcode         String        @unique
+  accessionNumber String        @unique
+  branchId        String
+  shelfId         String?
+  status          CopyStatus    @default(AVAILABLE)
+  condition       CopyCondition @default(GOOD)
+  priceCents      Int           @default(0)
+  acquiredAt      DateTime      @default(now())
+  version         Int           @default(1)
+  createdAt       DateTime      @default(now())
+  updatedAt       DateTime      @updatedAt
+
+  book                  Book            @relation(fields: [bookId], references: [id], onDelete: Restrict)
+  branch                Branch          @relation(fields: [branchId], references: [id], onDelete: Restrict)
+  shelf                 LocationShelf?  @relation(fields: [shelfId], references: [id], onDelete: SetNull)
+  loans                 Loan[]
+  allocatedReservations Reservation[]  @relation("AllocatedCopy")
+  inventoryItems        InventoryItem[]
+
+  @@index([barcode])
+  @@index([status])
+  @@index([branchId])
+  @@map("book_copies")
+}
+
+// -----------------------------------------------------------------------------
+// 6. CIRCULATION (LOANS)
+// -----------------------------------------------------------------------------
+model Loan {
+  id                String     @id @default(uuid())
+  copyId            String
+  memberId          String
+  issuedByUserId    String
+  returnedByUserId  String?
+  issuedAt          DateTime   @default(now())
+  dueAt             DateTime
+  returnedAt        DateTime?
+  renewedCount      Int        @default(0)
+  status            LoanStatus @default(ACTIVE)
+  notes             String?
+  createdAt         DateTime   @default(now())
+  updatedAt         DateTime   @updatedAt
+
+  copy           BookCopy @relation(fields: [copyId], references: [id], onDelete: Restrict)
+  member         Member   @relation(fields: [memberId], references: [id], onDelete: Restrict)
+  issuedByUser   User     @relation("IssuedLoans", fields: [issuedByUserId], references: [id], onDelete: Restrict)
+  returnedByUser User?    @relation("ReturnedLoans", fields: [returnedByUserId], references: [id], onDelete: SetNull)
+  fines          Fine[]
+
+  @@index([memberId, status])
+  @@index([dueAt])
+  @@map("loans")
+}
+
+// -----------------------------------------------------------------------------
+// 7. RESERVATIONS (HOLDS)
+// -----------------------------------------------------------------------------
+model Reservation {
+  id              String            @id @default(uuid())
+  bookId          String
+  memberId        String
+  pickupBranchId  String
+  allocatedCopyId String?           @unique
+  queuePosition   Int
+  status          ReservationStatus @default(PENDING)
+  reservedAt      DateTime          @default(now())
+  readyUntil      DateTime?
+  fulfilledAt     DateTime?
+  cancelledAt     DateTime?
+  notes           String?
+  createdAt       DateTime          @default(now())
+  updatedAt       DateTime          @updatedAt
+
+  book          Book      @relation(fields: [bookId], references: [id], onDelete: Restrict)
+  member        Member    @relation(fields: [memberId], references: [id], onDelete: Restrict)
+  pickupBranch  Branch    @relation(fields: [pickupBranchId], references: [id], onDelete: Restrict)
+  allocatedCopy BookCopy? @relation("AllocatedCopy", fields: [allocatedCopyId], references: [id], onDelete: SetNull)
+
+  @@index([bookId, queuePosition])
+  @@map("reservations")
+}
+
+// -----------------------------------------------------------------------------
+// 8. FINES & PAYMENTS
+// -----------------------------------------------------------------------------
+model Fine {
+  id               String     @id @default(uuid())
+  loanId           String?
+  memberId         String
+  assessedByUserId String?
+  amountCents      Int
+  balanceCents     Int
+  status           FineStatus @default(UNPAID)
+  reason           FineReason @default(OVERDUE)
+  notes            String?
+  assessedAt       DateTime   @default(now())
+  resolvedAt       DateTime?
+  createdAt        DateTime   @default(now())
+  updatedAt        DateTime   @updatedAt
+
+  loan           Loan?         @relation(fields: [loanId], references: [id], onDelete: SetNull)
+  member         Member        @relation(fields: [memberId], references: [id], onDelete: Restrict)
+  assessedByUser User?         @relation("AssessedFines", fields: [assessedByUserId], references: [id], onDelete: SetNull)
+  payments       FinePayment[]
+
+  @@map("fines")
+}
+
+model FinePayment {
+  id                   String        @id @default(uuid())
+  fineId               String
+  processedByUserId    String
+  amountCents          Int
+  paymentMethod        PaymentMethod
+  transactionReference String?
+  notes                String?
+  createdAt            DateTime      @default(now())
+
+  fine            Fine @relation(fields: [fineId], references: [id], onDelete: Restrict)
+  processedByUser User @relation("ProcessedPayments", fields: [processedByUserId], references: [id], onDelete: Restrict)
+
+  @@map("fine_payments")
+}
+
+// -----------------------------------------------------------------------------
+// 9. INVENTORY AUDIT SESSIONS
+// -----------------------------------------------------------------------------
+model InventorySession {
+  id                  String                 @id @default(uuid())
+  branchId            String
+  name                String
+  startedByUserId     String
+  status              InventorySessionStatus @default(IN_PROGRESS)
+  startedAt           DateTime               @default(now())
+  completedAt         DateTime?
+  totalExpected       Int                    @default(0)
+  totalScanned        Int                    @default(0)
+  totalDiscrepancies  Int                    @default(0)
+  notes               String?
+
+  branch        Branch          @relation(fields: [branchId], references: [id], onDelete: Restrict)
+  startedByUser User            @relation("StartedInventorySessions", fields: [startedByUserId], references: [id], onDelete: Restrict)
+  items         InventoryItem[]
+
+  @@map("inventory_sessions")
+}
+
+model InventoryItem {
+  id              String              @id @default(uuid())
+  sessionId       String
+  copyId          String
+  scannedBarcode  String
+  scannedShelfId  String?
+  expectedShelfId String?
+  status          InventoryItemStatus
+  scannedByUserId String
+  scannedAt       DateTime            @default(now())
+  resolutionNotes String?
+
+  session       InventorySession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  copy          BookCopy         @relation(fields: [copyId], references: [id], onDelete: Restrict)
+  scannedShelf  LocationShelf?   @relation("ScannedShelf", fields: [scannedShelfId], references: [id], onDelete: SetNull)
+  expectedShelf LocationShelf?   @relation("ExpectedShelf", fields: [expectedShelfId], references: [id], onDelete: SetNull)
+  scannedByUser User             @relation("ScannedInventoryItems", fields: [scannedByUserId], references: [id], onDelete: Restrict)
+
+  @@map("inventory_items")
+}
+
+// -----------------------------------------------------------------------------
+// 10. SYSTEM AUDIT LOGS & NOTIFICATIONS
+// -----------------------------------------------------------------------------
+model AuditLog {
+  id          BigInt   @id @default(autoincrement())
+  actorId     String?
+  actorEmail  String?
+  entityType  String
+  entityId    String
+  action      String
+  beforeState Json?
+  afterState  Json?
+  ipAddress   String?
+  userAgent   String?
+  createdAt   DateTime @default(now())
+
+  actor User? @relation(fields: [actorId], references: [id], onDelete: SetNull)
+
+  @@index([entityType, entityId])
+  @@index([createdAt])
+  @@map("audit_logs")
+}
+
+model Notification {
+  id        String   @id @default(uuid())
+  userId    String
+  title     String
+  message   String
+  channel   String   @default("IN_APP")
+  eventType String
+  isRead    Boolean  @default(false)
+  payload   Json?
+  createdAt DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, isRead])
+  @@map("notifications")
+}

@@ -1,66 +1,58 @@
-const mongoose = require('mongoose');
 const dotenv = require('dotenv');
-const User = require('../models/User');
 const bcrypt = require('bcryptjs');
+const prisma = require('../config/prisma');
 
 dotenv.config();
 
 /**
- * Seed default admin user if one doesn't already exist
+ * Seed default admin user in PostgreSQL if one doesn't already exist
  */
 const seedAdmin = async () => {
   try {
-    const adminEmail = process.env.ADMIN_EMAIL;
-    const adminPassword = process.env.ADMIN_PASSWORD;
+    const adminEmail = (process.env.ADMIN_EMAIL || 'admin@library.com').toLowerCase();
+    const adminPassword = process.env.ADMIN_PASSWORD || 'Admin@123';
 
-    if (!adminEmail || !adminPassword) {
-      console.log('ℹ️  ADMIN_EMAIL or ADMIN_PASSWORD not set in .env — skipping admin seed');
-      return;
-    }
-
-    // Check if admin already exists
-    const existingAdmin = await User.findOne({ email: adminEmail });
-
-    if (existingAdmin) {
-      console.log(`ℹ️  Admin user already exists: ${adminEmail}`);
-      return;
-    }
-
-    // Create admin user
-    const salt = await bcrypt.genSalt(10);
-    const hashedPassword = await bcrypt.hash(adminPassword, salt);
-
-    const admin = await User.create({
-      name: 'Admin',
-      email: adminEmail,
-      password: hashedPassword,
-      role: 'admin',
-      forcePasswordChange: true
+    // 1. Check PostgreSQL
+    const existingPgAdmin = await prisma.user.findUnique({
+      where: { email: adminEmail }
     });
 
-    console.log(`✅ Admin user seeded: ${admin.email}`);
+    if (!existingPgAdmin) {
+      const salt = await bcrypt.genSalt(10);
+      const passwordHash = await bcrypt.hash(adminPassword, salt);
+
+      let superAdminRole = await prisma.role.findUnique({ where: { name: 'SUPER_ADMIN' } });
+      if (!superAdminRole) {
+        superAdminRole = await prisma.role.create({
+          data: { name: 'SUPER_ADMIN', description: 'Full system control', isSystemRole: true }
+        });
+      }
+
+      const admin = await prisma.user.create({
+        data: {
+          email: adminEmail,
+          passwordHash,
+          firstName: 'System',
+          lastName: 'Administrator',
+          status: 'ACTIVE',
+          emailVerifiedAt: new Date()
+        }
+      });
+
+      await prisma.userRole.create({
+        data: {
+          userId: admin.id,
+          roleId: superAdminRole.id
+        }
+      });
+
+      console.log(`✅ Admin user seeded in PostgreSQL: ${admin.email}`);
+    } else {
+      console.log(`ℹ️ Admin user already exists in PostgreSQL: ${adminEmail}`);
+    }
   } catch (error) {
-    console.error(`❌ Error seeding admin: ${error.message}`);
+    console.warn(`ℹ️ Seed admin check note: ${error.message}`);
   }
 };
-
-// If run directly via `node utils/seedAdmin.js`
-if (require.main === module) {
-  const connectDB = require('../config/db');
-
-  const run = async () => {
-    await mongoose.connect(process.env.MONGO_URI);
-    console.log('Connected to MongoDB for seeding...');
-    await seedAdmin();
-    await mongoose.connection.close();
-    console.log('Seeding complete. Connection closed.');
-    process.exit(0);
-  };
-
-  run().catch((err) => {
-    console.error(err);
-    process.exit(1);
-  });
-}
 
 module.exports = seedAdmin;

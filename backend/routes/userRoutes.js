@@ -3,18 +3,18 @@ const router = express.Router();
 const {
   getUsers,
   getUserById,
-  updateUser,
+  updateUserRole,
+  updateUserStatus,
   deleteUser
 } = require('../controllers/userController');
-const { protect, admin } = require('../middleware/authMiddleware');
-const { mongoIdValidation } = require('../middleware/validateRequest');
+const { protect, admin, staffOrAdmin } = require('../middleware/authMiddleware');
 
-// All routes are admin-only
-router.use(protect, admin);
+router.use(protect);
 
-router.get('/', getUsers);
-router.get('/:id', mongoIdValidation, getUserById);
-router.put('/:id', mongoIdValidation, updateUser);
-router.delete('/:id', mongoIdValidation, deleteUser);
+router.get('/', staffOrAdmin, getUsers);
+router.get('/:id', staffOrAdmin, getUserById);
+router.put('/:id/role', admin, updateUserRole);
+router.put('/:id/status', admin, updateUserStatus);
+router.delete('/:id', admin, deleteUser);
 
 module.exports = router;

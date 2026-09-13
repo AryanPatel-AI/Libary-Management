@@ -25,6 +25,7 @@ import ActivityLogs from './pages/admin/ActivityLogs';
 import AdminTransactions from './pages/admin/AdminTransactions';
 import AdminReservations from './pages/admin/AdminReservations';
 import AdminFines from './pages/admin/AdminFines';
+import CirculationDesk from './pages/admin/CirculationDesk';
 import Login from './pages/Login';
 import Signup from './pages/Signup';
 import ForgotPassword from './pages/ForgotPassword';
@@ -158,6 +159,7 @@ function AppContent({ darkMode, toggleDarkMode }) {
               </ProtectedRoute>
             }>
               <Route index element={<AdminDashboard />} />
+              <Route path="circulation" element={<CirculationDesk />} />
               <Route path="books" element={<BookManagement />} />
               <Route path="users" element={<UserManagement />} />
               <Route path="transactions" element={<AdminTransactions />} />
