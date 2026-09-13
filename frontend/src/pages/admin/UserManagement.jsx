@@ -57,7 +57,9 @@ const UserManagement = () => {
   };
 
   const handleDelete = async (id) => {
-    if (id === JSON.parse(localStorage.getItem('user'))?.id) {
+    const userInfo = JSON.parse(localStorage.getItem('userInfo') || '{}');
+    const currentUserId = userInfo?.data?.id || userInfo?.data?._id || userInfo?.id;
+    if (id === currentUserId) {
       return toast.error('You cannot delete your own account');
     }
 

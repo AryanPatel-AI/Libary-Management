@@ -30,7 +30,7 @@ const Home = () => {
       if (statsRes.data.success) {
         setMetrics({
           totalBooks: statsRes.data.data.totalCopies,
-          totalUsers: statsRes.data.data.totalBooks, // Using book count as a proxy or just keep it
+          totalUsers: statsRes.data.data.totalUsers || 0,
           issuedBooks: statsRes.data.data.issuedBooks
         });
       }

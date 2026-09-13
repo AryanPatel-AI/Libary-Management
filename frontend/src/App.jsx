@@ -64,7 +64,7 @@ function App() {
         if (accessToken) {
           sessionStorage.setItem('pending_google_token', accessToken);
           window.history.replaceState({}, document.title, window.location.pathname);
-          window.location.reload(); 
+          window.location.reload();
         }
       }
     };
@@ -77,12 +77,17 @@ function App() {
     localStorage.setItem('theme', newMode ? 'dark' : 'light');
   };
 
+  // Sync dark mode to html element
+  React.useEffect(() => {
+    document.documentElement.classList.toggle('dark', darkMode);
+  }, [darkMode]);
+
   return (
     <GoogleOAuthProvider clientId={GOOGLE_CLIENT_ID}>
       <AuthProvider>
         <Router>
           <AppContent darkMode={darkMode} toggleDarkMode={toggleDarkMode} />
-          <ToastContainer 
+          <ToastContainer
             position="bottom-right"
             autoClose={3000}
             theme="dark"
@@ -102,17 +107,17 @@ function AppContent({ darkMode, toggleDarkMode }) {
 
   return (
     <div className={`min-h-screen transition-colors duration-300 flex flex-col relative overflow-hidden ${darkMode ? 'dark' : ''} ${isLandingPage ? 'bg-[#030712]' : 'bg-slate-50 dark:bg-slate-900'}`}>
-      
+
       {/* Dynamic Backgrounds */}
       <div className="fixed top-[-15%] left-[-10%] w-[500px] h-[500px] rounded-full bg-primary/10 blur-[120px] pointer-events-none"></div>
       <div className="fixed bottom-[-15%] right-[-10%] w-[500px] h-[500px] rounded-full bg-blue-500/10 blur-[120px] pointer-events-none"></div>
 
       <div className="relative z-10 flex flex-col min-h-screen">
-        <Header 
-          darkMode={darkMode} 
-          toggleDarkMode={toggleDarkMode} 
+        <Header
+          darkMode={darkMode}
+          toggleDarkMode={toggleDarkMode}
         />
-        
+
         <main className={`flex-1 ${isLandingPage ? '' : 'container mx-auto px-4 pt-24 pb-8'}`}>
           <Routes>
             {/* Public Pages */}

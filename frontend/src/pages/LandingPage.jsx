@@ -44,7 +44,7 @@ const LandingPage = ({ onOpenLogin }) => {
   return (
     <div className="min-h-screen bg-[#030712] text-white selection:bg-indigo-500/30">
       {/* Hero Section */}
-      <section id="home" className="relative h-screen flex items-center justify-center overflow-hidden">
+      <section id="home" className="relative min-h-screen flex items-center justify-center overflow-hidden">
         <ParticlesBackground />
 
         {/* Background Gradients */}
@@ -92,7 +92,7 @@ const LandingPage = ({ onOpenLogin }) => {
             <div className="flex flex-col sm:flex-row items-center justify-center gap-6">
               <Link
                 to="/main"
-                className="group relative px-12 py-6 bg-indigo-600 text-white rounded-2xl font-bold text-xl overflow-hidden transition-all hover:scale-105 active:scale-95 shadow-2xl shadow-indigo-500/20"
+                className="group relative px-8 sm:px-12 py-4 sm:py-5 bg-indigo-600 text-white rounded-2xl font-bold text-xl overflow-hidden transition-all hover:scale-105 active:scale-95 shadow-2xl shadow-indigo-500/20"
               >
                 <div className="absolute inset-0 bg-gradient-to-r from-indigo-400 to-purple-400 opacity-0 group-hover:opacity-20 transition-opacity"></div>
                 <span className="relative flex items-center gap-2">

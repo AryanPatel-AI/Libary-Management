@@ -470,11 +470,12 @@ const deleteBook = asyncHandler(async (req, res) => {
 // @route   GET /api/books/stats/public
 // @access  Public
 const getLibraryStats = asyncHandler(async (req, res) => {
-  const [totalBooks, totalCopies, availableCopies, totalCategories] = await Promise.all([
+  const [totalBooks, totalCopies, availableCopies, totalCategories, totalUsers] = await Promise.all([
     prisma.book.count(),
     prisma.bookCopy.count(),
     prisma.bookCopy.count({ where: { status: 'AVAILABLE' } }),
-    prisma.category.count()
+    prisma.category.count(),
+    prisma.user.count()
   ]);
 
   res.json({
@@ -483,7 +484,8 @@ const getLibraryStats = asyncHandler(async (req, res) => {
       totalBooks,
       totalCopies,
       availableCopies,
-      totalCategories
+      totalCategories,
+      totalUsers
     }
   });
 });

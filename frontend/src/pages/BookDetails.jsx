@@ -13,6 +13,7 @@ const BookDetails = () => {
   const { id } = useParams();
   const navigate = useNavigate();
   const [book, setBook] = useState(null);
+  const [relatedBooks, setRelatedBooks] = useState([]);
   const [loading, setLoading] = useState(true);
   const [issueLoading, setIssueLoading] = useState(false);
   const [buyLoading, setBuyLoading] = useState(false);
@@ -56,9 +57,12 @@ const BookDetails = () => {
         const { data } = await axios.get(`${API_URL}/books/${id}`);
         setBook(data.data.book);
         
-        // Fetch related books in the same category
-        const relRes = await axios.get(`${API_URL}/books?category=${data.data.book.category}&limit=4`);
-        setRelatedBooks(relRes.data.data.books.filter(b => b._id !== id));
+        // Fetch related books only if category is available
+        if (data.data.book?.category) {
+          const relRes = await axios.get(`${API_URL}/books?category=${encodeURIComponent(data.data.book.category)}&limit=4`);
+          const related = relRes.data?.data?.books || [];
+          setRelatedBooks(related.filter(b => b._id !== id));
+        }
       } catch (error) {
         toast.error('Failed to load book details.');
         console.error('Error fetching book:', error);

@@ -9,6 +9,9 @@ import { Link } from 'react-router-dom';
 
 const MainPage = () => {
   const { user } = useContext(AuthContext);
+  // AuthContext stores the full API response; name lives at data.data or data level
+  const currentUser = user?.data || user;
+  const displayName = currentUser?.name || currentUser?.firstName || 'Member';
 
   const stats = [
     { label: "Currently Issued", value: "12", trend: "+2 this week", icon: <Book className="w-5 h-5" /> },
@@ -42,7 +45,7 @@ const MainPage = () => {
                 System Operational
               </div>
               <h1 className="text-4xl md:text-6xl font-black tracking-tight mb-2">
-                Good Day, <span className="text-indigo-600 dark:text-indigo-400">{user?.name?.split(' ')[0] || 'Member'}</span>
+                Good Day, <span className="text-indigo-600 dark:text-indigo-400">{displayName.split(' ')[0]}</span>
               </h1>
               <p className="text-slate-500 dark:text-slate-400 text-lg max-w-xl">
                 Welcome to the central command of Patel & Co. Knowledge Center. Manage your collection and explore global insights.

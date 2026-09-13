@@ -20,12 +20,19 @@ const getRecommendations = asyncHandler(async (req, res) => {
     return res.json(popularBooks);
   }
 
-  // 2. Extract categories and tags from history
-  const categories = history.map(t => t.book.category);
-  const tags = history.flatMap(t => t.book.tags || []);
+  // 2. Extract categories and tags from history (guard against unpopulated book refs)
+  const validHistory = history.filter(t => t.book != null);
+
+  if (validHistory.length === 0) {
+    const popularBooks = await Book.find().sort('-rating -numReviews').limit(6);
+    return res.json(popularBooks);
+  }
+
+  const categories = validHistory.map(t => t.book.category).filter(Boolean);
+  const tags = validHistory.flatMap(t => t.book.tags || []);
 
   // 3. Find books in similar categories/tags that user hasn't read
-  const readBookIds = history.map(t => t.book._id);
+  const readBookIds = validHistory.map(t => t.book._id);
 
   const recommendations = await Book.find({
     _id: { $nin: readBookIds },

@@ -50,9 +50,12 @@ const upload = multer({
 // @route   POST /api/upload
 // @access  Admin/Librarian
 router.post('/', protect, adminOrLibrarian, upload.single('file'), (req, res) => {
+  if (!req.file) {
+    return res.status(400).json({ success: false, message: 'No file uploaded or file type not allowed.' });
+  }
   res.json({
     success: true,
-    url: `/${req.file.path.replace(/\\/g, '/')}`
+    url: `/uploads/${req.file.filename}`
   });
 });
 

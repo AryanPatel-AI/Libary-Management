@@ -17,7 +17,8 @@ const AIRecommendations = () => {
         const { data } = await axios.get(`${API_URL}/ai/recommendations`, {
           headers: { Authorization: `Bearer ${token}` }
         });
-        setRecommendations(data);
+        const recs = data?.data || data;
+        setRecommendations(Array.isArray(recs) ? recs : []);
       } catch (error) {
         console.error('Error fetching recommendations:', error);
       } finally {

@@ -17,14 +17,14 @@ const Orders = () => {
   const fetchOrders = async () => {
     try {
       setLoading(true);
-      const token = localStorage.getItem('token');
+      const userInfo = JSON.parse(localStorage.getItem('userInfo') || '{}');
+      const token = userInfo?.data?.token || userInfo?.token || localStorage.getItem('token');
       const config = { headers: { Authorization: `Bearer ${token}` } };
       
-      const { data } = await axios.get(`${API_URL}/transactions/my-books`, config);
+      const { data } = await axios.get(`${API_URL}/transactions/my-transactions`, config);
       
-      // Filter for transactions that were 'paid' (if we had that flag, or just use history)
-      // Actually, the user asked for an Order model, so I'll assume we can at least show history
-      setOrders(data.data.transactions || []);
+      // data.data is the array of loans returned by formatLoan
+      setOrders(Array.isArray(data.data) ? data.data : []);
     } catch (error) {
       toast.error('Failed to load order history');
     } finally {

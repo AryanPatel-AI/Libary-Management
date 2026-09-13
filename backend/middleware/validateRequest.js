@@ -50,8 +50,8 @@ const bookSchema = z.object({
     description: z.string().optional(),
     publisher: z.string().optional(),
     publishedYear: z.number().optional(),
-    image: z.string().url().optional().or(z.literal('')),
-    pdfUrl: z.string().url().optional().or(z.literal('')),
+    image: z.string().url().or(z.string().startsWith('/uploads/')).optional().or(z.literal('')),
+    pdfUrl: z.string().url().or(z.string().startsWith('/uploads/')).optional().or(z.literal('')),
     tags: z.array(z.string()).optional(),
   }),
 });
@@ -67,8 +67,8 @@ const bookUpdateSchema = z.object({
     description: z.string().optional(),
     publisher: z.string().optional(),
     publishedYear: z.number().optional(),
-    image: z.string().url().optional().or(z.literal('')),
-    pdfUrl: z.string().url().optional().or(z.literal('')),
+    image: z.string().url().or(z.string().startsWith('/uploads/')).optional().or(z.literal('')),
+    pdfUrl: z.string().url().or(z.string().startsWith('/uploads/')).optional().or(z.literal('')),
     tags: z.array(z.string()).optional(),
   }),
 });

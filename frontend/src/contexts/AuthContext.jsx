@@ -25,10 +25,18 @@ export const AuthProvider = ({ children }) => {
         });
 
         if (response.ok) {
-          const data = await response.json();
-          // Reconstruct the user object shape expected by the rest of the app
+          const freshData = await response.json();
+          // Merge fresh profile into stored shape (preserves token)
           const storedInfo = JSON.parse(localStorage.getItem('userInfo') || '{}');
-          setUser(storedInfo);
+          const merged = {
+            ...storedInfo,
+            data: {
+              ...(storedInfo.data || {}),
+              ...(freshData.data || freshData),
+            }
+          };
+          localStorage.setItem('userInfo', JSON.stringify(merged));
+          setUser(merged);
         } else {
           // Token is invalid or expired
           localStorage.removeItem('token');
