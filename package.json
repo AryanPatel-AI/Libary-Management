@@ -8,6 +8,6 @@
     "install-all": "npm run frontend-install && npm run backend-install",
     "frontend-build": "npm run build --prefix frontend",
     "start": "NODE_ENV=production node backend/server.js",
-    "build": "npm run install-all && npm run frontend-build"
+    "build": "npm run install-all && npm run frontend-build && cp -r frontend/dist ./dist"
   }
 }
