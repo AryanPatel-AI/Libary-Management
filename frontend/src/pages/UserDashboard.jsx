@@ -191,12 +191,50 @@ const UserDashboard = () => {
         </motion.div>
       )}
 
-      {/* Header */}
-      <div>
-        <h1 className="text-3xl font-extrabold text-slate-900 dark:text-white">Patron Dashboard</h1>
-        <p className="text-slate-500 dark:text-slate-400 mt-1">
-          Active borrowings, hold requests queue, due dates, and fine balances.
-        </p>
+      {/* Header with Editorial Typography and Member Sub-Navigation */}
+      <div className="space-y-4">
+        <div>
+          <span className="section-eyebrow mb-1.5">MEMBER EXPERIENCE &bull; SCHOLAR SUMMARY</span>
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+            <div>
+              <h1 className="font-serif-editorial text-3xl sm:text-4xl font-bold text-slate-900 dark:text-white tracking-tight">
+                Patron Overview &amp; Command
+              </h1>
+              <p className="text-slate-500 dark:text-slate-400 text-xs sm:text-sm mt-1">
+                Active borrowings, hold requests queue, loan due dates, and institutional ledger balances.
+              </p>
+            </div>
+
+            <div className="flex items-center gap-2">
+              <a
+                href="/profile"
+                className="px-3.5 py-1.5 rounded-xl border border-slate-200 dark:border-white/10 text-xs font-semibold text-slate-700 dark:text-slate-300 hover:bg-black/5 dark:hover:bg-white/5 transition-all flex items-center gap-1.5"
+              >
+                Patron Card &rarr;
+              </a>
+            </div>
+          </div>
+        </div>
+
+        {/* Dedicated Member Quick-Links Strip */}
+        <div className="flex items-center gap-2 overflow-x-auto pb-1 scrollbar-none">
+          {[
+            { label: 'Current Loans', path: '/loans' },
+            { label: 'Borrowing History', path: '/history' },
+            { label: 'Hold Queue', path: '/reservations' },
+            { label: 'Fines & Ledger', path: '/fines' },
+            { label: 'Alerts', path: '/notifications' },
+            { label: 'Digital Card', path: '/profile' },
+          ].map(tab => (
+            <a
+              key={tab.path}
+              href={tab.path}
+              className="px-3 py-1.5 rounded-xl bg-card border border-border text-xs font-medium text-muted-foreground hover:text-foreground hover:bg-muted whitespace-nowrap transition-all shadow-2xs"
+            >
+              {tab.label}
+            </a>
+          ))}
+        </div>
       </div>
 
       {/* Stats Section */}
@@ -221,7 +259,7 @@ const UserDashboard = () => {
         />
         <StatCard 
           title="Fines Balance" 
-          value={`₹${totalUnpaidFines}`} 
+          value={`$${totalUnpaidFines}`} 
           icon={DollarSign} 
           colorClass={totalUnpaidFineCents > 0 ? "bg-rose-100 text-rose-600 dark:bg-rose-500/20 dark:text-rose-400" : "bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-400"} 
           subtitle={totalUnpaidFineCents > 0 ? 'Outstanding library fees' : 'No outstanding fees'}
@@ -239,7 +277,12 @@ const UserDashboard = () => {
                 <BookOpen className="w-5 h-5 text-indigo-600" />
                 <h2 className="text-xl font-bold text-slate-900 dark:text-white">Active Borrowings</h2>
               </div>
-              <span className="text-xs font-semibold text-slate-400">{activeIssues.length} items on loan</span>
+              <div className="flex items-center gap-3">
+                <span className="text-xs font-semibold text-slate-400">{activeIssues.length} items on loan</span>
+                <a href="/loans" className="text-xs font-semibold text-amber-600 dark:text-amber-400 hover:underline">
+                  Manage Loans &rarr;
+                </a>
+              </div>
             </div>
 
             {activeIssues.length > 0 ? (
@@ -308,7 +351,12 @@ const UserDashboard = () => {
                 <Bookmark className="w-5 h-5 text-purple-600" />
                 <h2 className="text-xl font-bold text-slate-900 dark:text-white">Active Reservations Queue</h2>
               </div>
-              <span className="text-xs font-semibold text-slate-400">{reservations.length} hold requests</span>
+              <div className="flex items-center gap-3">
+                <span className="text-xs font-semibold text-slate-400">{reservations.length} hold requests</span>
+                <a href="/reservations" className="text-xs font-semibold text-purple-600 dark:text-purple-400 hover:underline">
+                  Full Queue &rarr;
+                </a>
+              </div>
             </div>
 
             {reservations.length > 0 ? (
@@ -406,9 +454,14 @@ const UserDashboard = () => {
 
           {/* Past Returned Books History */}
           <section className="bg-white dark:bg-slate-800 rounded-3xl p-6 shadow-sm border border-slate-100 dark:border-slate-700 space-y-4">
-            <div className="flex items-center gap-2">
-              <Package className="w-5 h-5 text-emerald-600" />
-              <h2 className="text-xl font-bold text-slate-900 dark:text-white">Borrowing History</h2>
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <Package className="w-5 h-5 text-emerald-600" />
+                <h2 className="text-xl font-bold text-slate-900 dark:text-white">Borrowing History</h2>
+              </div>
+              <a href="/history" className="text-xs font-semibold text-emerald-600 dark:text-emerald-400 hover:underline">
+                View Full Archival Ledger &rarr;
+              </a>
             </div>
 
             {pastOrders.length > 0 ? (

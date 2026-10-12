@@ -19,9 +19,13 @@ const ProtectedRoute = ({ children, requiredRole }) => {
     return <Navigate to={`/login?redirect=${encodeURIComponent(location.pathname + location.search)}`} replace />;
   }
 
-  // Role restriction (e.g. admin only)
-  if (requiredRole && user.data?.role !== requiredRole) {
-    return <Navigate to="/main" replace />;
+  // Role restriction (supports string or array of allowed roles)
+  if (requiredRole) {
+    const userRole = user.data?.role || user.role;
+    const allowedRoles = Array.isArray(requiredRole) ? requiredRole : [requiredRole];
+    if (!allowedRoles.includes(userRole)) {
+      return <Navigate to="/main" replace />;
+    }
   }
 
   return children;

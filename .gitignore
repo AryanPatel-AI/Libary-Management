@@ -7,3 +7,8 @@ build/
 *.log
 .DS_Store
 */.DS_Store
+.vscode/
+.cursor/
+frontend/patch_home.*
+frontend/prompt*.txt
+frontend/update_book_details.js

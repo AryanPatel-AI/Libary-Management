@@ -2,201 +2,130 @@ import React, { useState, useContext } from 'react';
 import API_URL from '../api/config';
 import { Link, useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { BookOpen, Loader2 } from 'lucide-react';
+import { Loader2, Bookmark, Check, BookOpen } from 'lucide-react';
 import axios from 'axios';
 import { toast } from 'react-toastify';
 import { AuthContext } from '../contexts/AuthContext';
+import BookCover from './BookCover';
 
-const BookCard = ({ book, index }) => {
+/**
+ * Reusable BookCard component
+ * Displays:
+ * - Cover (via BookCover)
+ * - Title (prominent editorial serif)
+ * - Author
+ * - Category
+ * - Availability
+ * - Publication Year (where useful)
+ */
+const BookCard = ({ book, index = 0 }) => {
   const [loading, setLoading] = useState(false);
-  const [buyLoading, setBuyLoading] = useState(false);
-  const { user, setUser } = useContext(AuthContext);
+  const { user } = useContext(AuthContext);
   const navigate = useNavigate();
 
-  const isAvailable = book.availableCopies > 0;
-  
-  // user might be structured as { success: true, data: { ... } }
-  const currentUser = user?.data || user;
-  const hasPurchased = currentUser?.purchasedBooks?.includes(book._id);
+  const isAvailable = (book.availableCopies ?? 1) > 0;
+  const coverImage = book.image || book.coverImage;
+  const pubYear = book.year || book.publishedYear || (book.createdAt ? new Date(book.createdAt).getFullYear() : null);
 
-  const handleIssueBook = async () => {
+  const handleIssueBook = async (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+
+    const token = localStorage.getItem('token');
+    if (!token) {
+      toast.info('Please sign in to request or borrow volumes.');
+      navigate('/login');
+      return;
+    }
+
     try {
       setLoading(true);
-      let userInfo;
-      try {
-        userInfo = JSON.parse(localStorage.getItem('userInfo'));
-      } catch (parseError) {
-        console.error('Failed to parse userInfo from localStorage:', parseError);
-        toast.error('Session data corrupted. Please login again.');
-        navigate('/login');
-        return;
-      }
-      const token = userInfo?.data?.token || userInfo?.token;
-      
-      if (!token) {
-        toast.error('Please login to issue a book.');
-        navigate('/login');
-        return;
-      }
-
-      const config = {
-        headers: {
-          Authorization: `Bearer ${token}`
-        }
-      };
-
       await axios.post(
         `${API_URL}/transactions/issue`,
         { bookId: book._id },
-        config
+        { headers: { Authorization: `Bearer ${token}` } }
       );
-
-      toast.success(`Successfully issued "${book.title}"!`);
-      // Re-fetch or handle state via parent component
+      toast.success(`Successfully issued "${book.title}"`);
     } catch (error) {
-      toast.error(error.response?.data?.message || 'Failed to issue book. Please try again.');
+      toast.error(
+        error.response?.data?.message || 'Unable to issue volume at this time'
+      );
     } finally {
       setLoading(false);
     }
   };
 
-  const handleBuyBook = async (e) => {
-    e.preventDefault();
-    try {
-      setBuyLoading(true);
-      let userInfo;
-      try {
-        userInfo = JSON.parse(localStorage.getItem('userInfo'));
-      } catch (parseError) {
-        console.error('Failed to parse userInfo from localStorage:', parseError);
-        toast.error('Session data corrupted. Please login again.');
-        navigate('/login');
-        return;
-      }
-      const token = userInfo?.data?.token || userInfo?.token;
-      
-      if (!token) {
-        toast.error('Please login to buy a book.');
-        navigate('/login');
-        return;
-      }
-
-      const config = {
-        headers: {
-          Authorization: `Bearer ${token}`
-        }
-      };
-
-      await axios.post(
-        `${API_URL}/transactions/buy`,
-        { bookId: book._id },
-        config
-      );
-
-      toast.success(`Successfully purchased "${book.title}"!`);
-      
-      // Update local user context
-      if (currentUser && currentUser.purchasedBooks) {
-        const updatedUser = { ...user };
-        if (updatedUser.data) {
-           updatedUser.data.purchasedBooks = [...updatedUser.data.purchasedBooks, book._id];
-        } else {
-           updatedUser.purchasedBooks = [...updatedUser.purchasedBooks, book._id];
-        }
-        localStorage.setItem('userInfo', JSON.stringify(updatedUser));
-        if (setUser) setUser(updatedUser);
-      } else {
-        // Fallback reload if structure is unexpected
-        window.location.reload();
-      }
-    } catch (error) {
-      toast.error(error.response?.data?.message || 'Failed to buy book. Please try again.');
-    } finally {
-      setBuyLoading(false);
-    }
-  };
-
   return (
     <motion.div
-      initial={{ opacity: 0, scale: 0.95 }}
-      animate={{ opacity: 1, scale: 1 }}
-      transition={{ duration: 0.4, delay: index * 0.05 }}
-      whileHover={{ y: -6 }}
-      className="bg-white dark:bg-slate-800 rounded-2xl p-5 shadow-sm border border-slate-100 dark:border-slate-700 flex flex-col h-full group"
+      initial={{ opacity: 0, y: 12 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.3, delay: Math.min(index * 0.03, 0.25) }}
+      className="group hairline-card rounded-2xl bg-card border border-border p-4 hover:border-amber-500/40 hover:shadow-lg transition-all duration-300 flex flex-col justify-between"
     >
-      <Link to={`/books/${book._id}`} className="flex-1 flex flex-col block">
-        <div className="bg-slate-50 dark:bg-slate-900 rounded-xl h-48 mb-4 flex items-center justify-center text-slate-300 dark:text-slate-600 overflow-hidden relative group-hover:shadow-inner">
-          {book.image ? (
-            <img 
-              src={book.image} 
-              alt={`Cover for ${book.title}`} 
-              loading="lazy" 
-              className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500" 
-            />
-          ) : (
-            <BookOpen className="w-16 h-16 group-hover:scale-110 transition-transform duration-500" />
-          )}
-        </div>
+      <Link to={`/books/${book._id}`} className="block space-y-3.5 flex-1">
         
-        <div className="flex-1">
-          <div className="flex justify-between items-start mb-2">
-            <span className="text-xs font-semibold uppercase tracking-wider text-primary bg-primary/10 px-2 py-1 rounded-md truncate max-w-[50%]">
-              {book.category}
-            </span>
-            <span className={`text-xs font-medium px-2 py-1 rounded-md shrink-0 ${isAvailable ? 'bg-green-100 text-green-700 dark:bg-green-500/20 dark:text-green-400' : 'bg-red-100 text-red-700 dark:bg-red-500/20 dark:text-red-400'}`}>
-              {isAvailable ? `${book.availableCopies} Left` : 'Out of Stock'}
-            </span>
-            {book.pdfUrl && (
-              <span className="text-[10px] font-bold uppercase tracking-tighter bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400 px-2 py-1 rounded-md">
-                eBook
+        {/* Cover presentation */}
+        <div className="flex justify-center pt-1 pb-1">
+          <BookCover
+            src={coverImage}
+            title={book.title}
+            author={book.author}
+            size="full"
+            className="h-56 max-w-[170px] mx-auto group-hover:scale-[1.03] transition-transform duration-300"
+          />
+        </div>
+
+        {/* Category & Availability tags */}
+        <div className="flex items-center justify-between gap-2 pt-1">
+          <span className="font-mono text-[10px] text-amber-700 dark:text-amber-400 bg-amber-500/10 px-2 py-0.5 rounded border border-amber-500/20 truncate max-w-[65%]">
+            {book.category || 'Collection'}
+          </span>
+
+          <span
+            className={`text-[10px] font-semibold px-2 py-0.5 rounded-full ${
+              isAvailable
+                ? 'badge-success'
+                : 'badge-danger'
+            }`}
+          >
+            {isAvailable ? 'Available' : 'Circulated'}
+          </span>
+        </div>
+
+        {/* Title & Author (Strong editorial serif treatment) */}
+        <div className="space-y-1">
+          <h3 className="font-serif-editorial text-base sm:text-lg font-bold text-foreground leading-snug line-clamp-2 group-hover:text-amber-600 dark:group-hover:text-amber-400 transition-colors">
+            {book.title}
+          </h3>
+
+          <div className="flex items-center justify-between text-xs text-muted-foreground">
+            <p className="truncate font-sans font-medium">
+              {book.author || 'Anonymous'}
+            </p>
+            {pubYear && (
+              <span className="font-mono text-[11px] text-muted-foreground shrink-0 ml-2">
+                {pubYear}
               </span>
             )}
           </div>
-          
-          <h3 className="text-lg font-bold text-slate-900 dark:text-white leading-tight mb-1 line-clamp-2 group-hover:text-primary transition-colors">
-            {book.title}
-          </h3>
-          <p className="text-sm text-slate-500 dark:text-slate-400 mb-4 truncate">
-            by {book.author}
-          </p>
         </div>
       </Link>
 
-      {book.isPaid ? (
-        hasPurchased ? (
-          <button
-            className="w-full py-2.5 rounded-xl font-medium text-sm transition-all flex justify-center items-center gap-2 bg-green-500 text-white hover:bg-green-600 shadow-md hover:shadow-lg"
-            onClick={(e) => {
-              e.preventDefault();
-              toast.success(`Accessing PDF / Content for ${book.title}`);
-            }}
-          >
-            Read Content
-          </button>
-        ) : (
-          <button
-            onClick={handleBuyBook}
-            disabled={buyLoading}
-            className="w-full py-2.5 rounded-xl font-medium text-sm transition-all flex justify-center items-center gap-2 bg-primary text-white hover:bg-primary-hover shadow-md hover:shadow-lg"
-          >
-            {buyLoading && <Loader2 className="w-4 h-4 animate-spin" />}
-            {buyLoading ? 'Processing...' : `Buy ₹${book.price}`}
-          </button>
-        )
-      ) : (
+      {/* Quick Action Button */}
+      <div className="pt-3.5 mt-3 border-t border-border">
         <button
           onClick={handleIssueBook}
           disabled={!isAvailable || loading}
-          className={`w-full py-2.5 rounded-xl font-medium text-sm transition-all flex justify-center items-center gap-2
-            ${isAvailable && !loading
-              ? 'bg-primary text-white hover:bg-primary-hover shadow-md hover:shadow-lg' 
-              : 'bg-slate-100 text-slate-400 cursor-not-allowed dark:bg-slate-700 dark:text-slate-500'
-            }`}
+          className={`w-full py-2 px-3 rounded-xl text-xs font-semibold transition-all flex items-center justify-center gap-1.5 ${
+            isAvailable && !loading
+              ? 'bg-foreground text-background hover:opacity-90 shadow-2xs'
+              : 'bg-muted text-muted-foreground cursor-not-allowed border border-border'
+          }`}
         >
-          {loading && <Loader2 className="w-4 h-4 animate-spin" />}
-          {loading ? 'Processing...' : (isAvailable ? 'Read Free' : 'Not Available')}
+          {loading && <Loader2 className="w-3.5 h-3.5 animate-spin text-amber-500" />}
+          {loading ? 'Processing...' : isAvailable ? 'Borrow Volume' : 'Join Waitlist'}
         </button>
-      )}
+      </div>
     </motion.div>
   );
 };
