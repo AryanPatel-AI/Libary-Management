@@ -67,6 +67,10 @@ function App() {
     handleHashLogin();
   }, []);
 
+  React.useEffect(() => {
+    document.documentElement.classList.toggle('dark', darkMode);
+  }, [darkMode]);
+
   const toggleDarkMode = () => {
     const newMode = !darkMode;
     setDarkMode(newMode);
@@ -81,7 +85,7 @@ function App() {
           <ToastContainer 
             position="bottom-right"
             autoClose={3000}
-            theme="dark"
+            theme={darkMode ? 'dark' : 'light'}
           />
         </Router>
       </AuthProvider>
@@ -94,10 +98,8 @@ function AppContent({ darkMode, toggleDarkMode }) {
   const navigate = useNavigate();
   const isLandingPage = location.pathname === '/';
 
-
-
   return (
-    <div className={`min-h-screen transition-colors duration-300 flex flex-col relative overflow-hidden ${darkMode ? 'dark' : ''} ${isLandingPage ? 'bg-[#030712]' : 'bg-slate-50 dark:bg-slate-900'}`}>
+    <div className={`min-h-screen transition-colors duration-300 flex flex-col relative overflow-hidden ${darkMode ? 'dark' : ''} ${isLandingPage ? 'bg-[#030712]' : 'bg-slate-50 dark:bg-slate-950'}`}>
       
       {/* Dynamic Backgrounds */}
       <div className="fixed top-[-15%] left-[-10%] w-[500px] h-[500px] rounded-full bg-primary/10 blur-[120px] pointer-events-none"></div>

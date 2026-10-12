@@ -150,6 +150,10 @@ class EmailSender {
       `
     });
   }
+
+  async sendReservationConfirmation(userEmail, userName, bookTitle) {
+    return this.sendReservationNotification(userEmail, userName, bookTitle);
+  }
 }
 
 module.exports = new EmailSender();

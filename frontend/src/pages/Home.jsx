@@ -29,9 +29,9 @@ const Home = () => {
       
       if (statsRes.data.success) {
         setMetrics({
-          totalBooks: statsRes.data.data.totalCopies,
-          totalUsers: statsRes.data.data.totalBooks, // Using book count as a proxy or just keep it
-          issuedBooks: statsRes.data.data.issuedBooks
+          totalBooks: statsRes.data.data.totalCopies || statsRes.data.data.totalBooks || 0,
+          totalUsers: statsRes.data.data.totalUsers ?? statsRes.data.data.totalBooks,
+          issuedBooks: statsRes.data.data.issuedBooks || 0
         });
       }
       

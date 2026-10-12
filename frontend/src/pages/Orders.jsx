@@ -80,7 +80,7 @@ const Orders = () => {
                   </td>
                   <td className="px-6 py-4 text-sm font-bold text-slate-900 dark:text-white flex items-center gap-1">
                     <IndianRupee className="w-3 h-3" />
-                    {order.book?.price || 0}
+                    {order.book?.price ?? order.price ?? 0}
                   </td>
                   <td className="px-6 py-4 text-right">
                     <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-bold ${

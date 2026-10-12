@@ -44,7 +44,7 @@ const LandingPage = ({ onOpenLogin }) => {
   return (
     <div className="min-h-screen bg-[#030712] text-white selection:bg-indigo-500/30">
       {/* Hero Section */}
-      <section id="home" className="relative h-screen flex items-center justify-center overflow-hidden">
+      <section id="home" className="relative min-h-screen py-24 flex items-center justify-center">
         <ParticlesBackground />
 
         {/* Background Gradients */}
@@ -65,7 +65,7 @@ const LandingPage = ({ onOpenLogin }) => {
               <span className="text-sm font-medium text-indigo-300 uppercase tracking-widest">Enterprise Library System</span>
             </div>
 
-            <h1 className="text-4xl sm:text-6xl md:text-7xl lg:text-8xl font-black tracking-tight mb-8 leading-[1.1] min-h-[280px] md:min-h-[350px] flex items-center justify-center">
+            <h1 className="text-4xl sm:text-6xl md:text-7xl lg:text-8xl font-black tracking-tight mb-8 leading-[1.1] min-h-[200px] md:min-h-[260px] flex items-center justify-center">
               <div className="w-full flex flex-col items-center justify-center gap-y-2 md:gap-y-4">
                 <span className="text-white">Patel & Co.</span>
                 <ReactTyped
@@ -92,7 +92,7 @@ const LandingPage = ({ onOpenLogin }) => {
             <div className="flex flex-col sm:flex-row items-center justify-center gap-6">
               <Link
                 to="/main"
-                className="group relative px-12 py-6 bg-indigo-600 text-white rounded-2xl font-bold text-xl overflow-hidden transition-all hover:scale-105 active:scale-95 shadow-2xl shadow-indigo-500/20"
+                className="group relative px-8 sm:px-12 py-4 sm:py-5 bg-indigo-600 text-white rounded-2xl font-bold text-xl overflow-hidden transition-all hover:scale-105 active:scale-95 shadow-2xl shadow-indigo-500/20"
               >
                 <div className="absolute inset-0 bg-gradient-to-r from-indigo-400 to-purple-400 opacity-0 group-hover:opacity-20 transition-opacity"></div>
                 <span className="relative flex items-center gap-2">

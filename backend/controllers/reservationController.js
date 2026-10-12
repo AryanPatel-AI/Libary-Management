@@ -1,7 +1,7 @@
 const asyncHandler = require('express-async-handler');
 const Reservation = require('../models/Reservation');
 const Book = require('../models/Book');
-const emailService = require('../utils/emailService');
+const emailSender = require('../services/emailSender');
 
 // @desc    Reserve a book
 // @route   POST /api/reservations
@@ -63,7 +63,7 @@ const reserveBook = asyncHandler(async (req, res) => {
 
   // Dispatch Email Notification
   try {
-    await emailService.sendReservationConfirmation(req.user.email, req.user.name, book.title);
+    await emailSender.sendReservationConfirmation(req.user.email, req.user.name, book.title);
   } catch (emailError) {
     console.error('Failed to send reservation confirmation email:', emailError);
   }

@@ -12,12 +12,13 @@ const AIRecommendations = () => {
   useEffect(() => {
     const fetchRecommendations = async () => {
       try {
-        setLoading(true);
-        const token = localStorage.getItem('token');
+        const userInfo = JSON.parse(localStorage.getItem('userInfo') || '{}');
+        const token = userInfo?.data?.token || userInfo?.token || localStorage.getItem('token');
         const { data } = await axios.get(`${API_URL}/ai/recommendations`, {
           headers: { Authorization: `Bearer ${token}` }
         });
-        setRecommendations(data);
+        const list = Array.isArray(data) ? data : (data?.data || []);
+        setRecommendations(Array.isArray(list) ? list : []);
       } catch (error) {
         console.error('Error fetching recommendations:', error);
       } finally {

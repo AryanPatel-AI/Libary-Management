@@ -31,21 +31,20 @@ const AdminDashboard = () => {
   useEffect(() => {
     const fetchStats = async () => {
       try {
-        const [booksRes, usersRes] = await Promise.all([
-          axios.get(`${API_URL}/books`),
-          axios.get(`${API_URL}/users`)
-        ]);
-        
-        const allBooks = booksRes.data.data.books || [];
-        const totalBooks = allBooks.reduce((acc, book) => acc + book.totalCopies, 0);
-        const availableBooks = allBooks.reduce((acc, book) => acc + book.availableCopies, 0);
-        
-        setStats({
-          books: totalBooks,
-          users: usersRes.data.data.total || 0,
-          issues: totalBooks - availableBooks,
-          overdue: 2 // Mock overdue count
-        });
+        const userInfo = JSON.parse(localStorage.getItem('userInfo') || '{}');
+        const token = userInfo?.data?.token || userInfo?.token;
+        const config = token ? { headers: { Authorization: `Bearer ${token}` } } : {};
+
+        const res = await axios.get(`${API_URL}/analytics/dashboard`, config);
+        if (res.data?.success && res.data?.data) {
+          const d = res.data.data;
+          setStats({
+            books: d.totalBooks || 0,
+            users: d.totalUsers || 0,
+            issues: d.activeIssues || 0,
+            overdue: d.overdueBooks || 0
+          });
+        }
       } catch (error) {
         console.error('Error fetching admin stats:', error);
       } finally {

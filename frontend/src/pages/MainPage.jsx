@@ -42,7 +42,7 @@ const MainPage = () => {
                 System Operational
               </div>
               <h1 className="text-4xl md:text-6xl font-black tracking-tight mb-2">
-                Good Day, <span className="text-indigo-600 dark:text-indigo-400">{user?.name?.split(' ')[0] || 'Member'}</span>
+                Good Day, <span className="text-indigo-600 dark:text-indigo-400">{(user?.data?.name || user?.name)?.split(' ')[0] || 'Member'}</span>
               </h1>
               <p className="text-slate-500 dark:text-slate-400 text-lg max-w-xl">
                 Welcome to the central command of Patel & Co. Knowledge Center. Manage your collection and explore global insights.

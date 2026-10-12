@@ -1,6 +1,6 @@
 const Reservation = require('../models/Reservation');
 const Book = require('../models/Book');
-const emailService = require('./emailService');
+const emailSender = require('../services/emailSender');
 
 /**
  * Processes the next reservation in the waitlist for a specific book.
@@ -34,7 +34,7 @@ const processNextReservation = async (bookId) => {
 
   // 4. Notify user via email
   try {
-    await emailService.sendEmail({
+    await emailSender.send({
       to: nextReservation.user.email,
       subject: `📚 Good News! "${nextReservation.book.title}" is available`,
       html: `

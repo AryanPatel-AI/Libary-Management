@@ -259,19 +259,22 @@ const verifyAccess = asyncHandler(async (req, res) => {
 // @route   GET /api/books/stats/public
 // @access  Public
 const getLibraryStats = asyncHandler(async (req, res) => {
-  const [totalBooks, totalCopiesDoc] = await Promise.all([
-    Book.countDocuments(),
-    Book.aggregate([{ $group: { _id: null, total: { $sum: "$totalCopies" } } }])
-  ]);
-
   const Transaction = require('../models/Transaction');
-  const issuedBooks = await Transaction.countDocuments({ status: 'issued' });
+  const User = require('../models/User');
+
+  const [totalBooks, totalCopiesDoc, totalUsers, issuedBooks] = await Promise.all([
+    Book.countDocuments(),
+    Book.aggregate([{ $group: { _id: null, total: { $sum: "$totalCopies" } } }]),
+    User.countDocuments(),
+    Transaction.countDocuments({ status: 'issued' })
+  ]);
 
   res.json({
     success: true,
     data: {
       totalBooks: totalBooks,
       totalCopies: totalCopiesDoc[0]?.total || 0,
+      totalUsers,
       issuedBooks
     }
   });

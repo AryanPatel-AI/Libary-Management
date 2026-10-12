@@ -13,9 +13,9 @@ const startOverdueReminders = () => {
     try {
       const today = new Date();
       
-      // Find all transactions that are 'issued' and past their due date
+      // Find all transactions that are 'issued' or 'overdue' and past their due date
       const overdueTransactions = await Transaction.find({
-        status: 'issued',
+        status: { $in: ['issued', 'overdue'] },
         dueDate: { $lt: today },
         returnDate: null
       }).populate('user').populate('book');

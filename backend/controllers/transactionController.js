@@ -5,7 +5,7 @@ const Book = require('../models/Book');
 const User = require('../models/User');
 const Fine = require('../models/Fine');
 const calculateFine = require('../utils/calculateFine');
-const emailService = require('../utils/emailService');
+const emailSender = require('../services/emailSender');
 const Notification = require('../models/Notification');
 
 // @desc    Issue a book to the logged-in user
@@ -101,7 +101,7 @@ const issueBook = asyncHandler(async (req, res) => {
   // Dispatch Order Confirmation Email
   try {
     const book = await Book.findById(bookId);
-    await emailService.sendOrderConfirmation(req.user.email, req.user.name, book.title, dueDate);
+    await emailSender.sendOrderConfirmation(req.user.email, req.user.name, book.title, dueDate);
   } catch (emailError) {
     console.error('Failed to send order confirmation email:', emailError);
   }
@@ -173,8 +173,9 @@ const returnBook = asyncHandler(async (req, res) => {
   }
 
   // 4. Create fine record if applicable
+  let fineRecord = null;
   if (fineAmount > 0) {
-    const fineRecord = await Fine.create({
+    fineRecord = await Fine.create({
       user: transaction.user,
       transaction: transaction._id,
       amount: fineAmount,
@@ -182,13 +183,17 @@ const returnBook = asyncHandler(async (req, res) => {
     });
   }
 
+  // Get book title for system notification
+  const bookDoc = await Book.findById(transaction.book).select('title');
+  const bookTitle = bookDoc ? bookDoc.title : 'Book';
+
   // Create System Notification
   await Notification.create({
     user: transaction.user,
     title: 'Book Returned',
     message: fineAmount > 0 
-      ? `Book "${transaction.book.title}" returned. Fine of ₹${fineAmount} incurred.`
-      : `Book "${transaction.book.title}" returned successfully.`,
+      ? `Book "${bookTitle}" returned. Fine of ₹${fineAmount} incurred.`
+      : `Book "${bookTitle}" returned successfully.`,
     type: fineAmount > 0 ? 'warning' : 'success'
   });
 
@@ -226,7 +231,7 @@ const getMyTransactions = asyncHandler(async (req, res) => {
 
   const total = await Transaction.countDocuments(query);
   const transactions = await Transaction.find(query)
-    .populate('book', 'title author isbn category')
+    .populate('book', 'title author isbn category price coverImage')
     .sort({ createdAt: -1 })
     .skip(skip)
     .limit(limit);

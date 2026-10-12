@@ -12,8 +12,10 @@ const getRecommendations = asyncHandler(async (req, res) => {
     .sort('-createdAt')
     .limit(10);
 
-  if (history.length === 0) {
-    // If no history, return most popular books
+  const validHistory = history.filter(t => t.book);
+
+  if (validHistory.length === 0) {
+    // If no history or books deleted, return most popular books
     const popularBooks = await Book.find()
       .sort('-rating -numReviews')
       .limit(6);
@@ -21,11 +23,11 @@ const getRecommendations = asyncHandler(async (req, res) => {
   }
 
   // 2. Extract categories and tags from history
-  const categories = history.map(t => t.book.category);
-  const tags = history.flatMap(t => t.book.tags || []);
+  const categories = validHistory.map(t => t.book.category).filter(Boolean);
+  const tags = validHistory.flatMap(t => t.book.tags || []);
 
   // 3. Find books in similar categories/tags that user hasn't read
-  const readBookIds = history.map(t => t.book._id);
+  const readBookIds = validHistory.map(t => t.book._id);
 
   const recommendations = await Book.find({
     _id: { $nin: readBookIds },

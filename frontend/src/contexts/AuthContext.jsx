@@ -25,10 +25,19 @@ export const AuthProvider = ({ children }) => {
         });
 
         if (response.ok) {
-          const data = await response.json();
-          // Reconstruct the user object shape expected by the rest of the app
+          const profileRes = await response.json();
+          const freshUser = profileRes.data || profileRes;
           const storedInfo = JSON.parse(localStorage.getItem('userInfo') || '{}');
-          setUser(storedInfo);
+          const updatedUserInfo = {
+            ...storedInfo,
+            data: {
+              ...(storedInfo.data || {}),
+              ...freshUser,
+              token: token
+            }
+          };
+          localStorage.setItem('userInfo', JSON.stringify(updatedUserInfo));
+          setUser(updatedUserInfo);
         } else {
           // Token is invalid or expired
           localStorage.removeItem('token');
